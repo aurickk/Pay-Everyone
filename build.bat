@@ -61,7 +61,7 @@ exit /b 1
 echo.
 echo Building for Minecraft %MC_VER%...
 echo ----------------------------------------
-call gradlew clean build "-PMC_VERSION=%MC_VER%"
+call gradlew.bat clean build "-PMC_VERSION=%MC_VER%"
 if errorlevel 1 (
     echo.
     echo BUILD FAILED for Minecraft %MC_VER%
@@ -86,7 +86,7 @@ for %%v in (%VERSIONS%) do (
     echo.
     echo Building for Minecraft %%v...
     echo ----------------------------------------
-    call gradlew clean build "-PMC_VERSION=%%v"
+    call gradlew.bat clean build "-PMC_VERSION=%%v"
     if errorlevel 1 (
         echo FAILED: Minecraft %%v
         set "FAILED=!FAILED! %%v"
