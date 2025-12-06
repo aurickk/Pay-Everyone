@@ -6,23 +6,21 @@
 </p>
 <h1 align="center">Pay Everyone</h1>
 
-<p align="center">Become MrBeast</p>
+<p align="center">Become MrBeast!</p>
 
 
 ## Features
 
-- **Pay All Players**: Automatically pay all online players with a single command
-- **Random Amounts**: Support for random payment amounts within a range (e.g., 300-3000)
+- **Pay Everyone**: Automatically discorvers and pay all online players with a single command
 - **Customizable Delays**: Set delay between each payment to prevent command spam kick
+- **Auto-Confirm**: Automatically click confirmation buttons or double send payments for payment verifications
 - **Player Exclusions**: Exclude specific players from receiving payments
-- **Player Logging**: Logging online player in large servers where not all players are on the tab list
 - **Randomized Payment Order**: Payments are sent in random order to avoid patterns
-- **Auto-Confirm**: Automatically click confirmation buttons on servers with payment confirmation menus
-- **Keybinds**: Quick stop keybind (default: K) to instantly stop payments
+- **Random Amounts**: Support for random payment amounts within a range (e.g., 300-3000)
 
 ## Requirements
 
-- **Minecraft**: 1.21.4 or 1.21.8
+- **Minecraft**: 1.21.4 - 1.21.10
 - **Fabric Loader**: 0.15.0 or higher
 - **Fabric API**: Latest version for your Minecraft version
 
@@ -34,21 +32,97 @@
 4. Place both mods in your `.minecraft/mods` folder
 5. Launch Minecraft
 
-## Usage
-### Demo Video
+# Usage
 
-https://github.com/user-attachments/assets/b05579a0-08e7-49ba-9e8b-71665d6cddd4 
+## Important Pre-Payment Setup
 
-### Basic Commands
+Not always necessary but allows for more customizations
 
-#### Show Pay info
+### Exclude Players
+
+Exclude specific players from receiving payments.
+
 ```
-/payall info
+/payall exclude <player1> <player2>
+/payall exclude Player1 Player2
 ```
-Displays a lists of logged players and excluded players on the pay list.
-#### Tab Scan
+
+### Automatically Confirm Menus 
+
+Some servers show a confirmation menu before processing each payment. The auto-confirm feature clicks the assigned clickslot button to automatically confirm each payment.
+
 ```
-/payall tabscan                    # Reads through /pay autofills to find avaliable players to pay
+/payall confirmclickslot <slot>           # Enable auto-click on slot ID
+/payall confirmclickslot <slot> <delay>   # Enable with custom delay (50-2000ms)
+/payall confirmclickslot                  # Show current status
+/payall confirmclickslot off              # Disable auto-confirm
+```
+<img width="250" height="250" alt="image" src="https://github.com/user-attachments/assets/d1d47821-481e-4a63-9856-e0f281ebb0af" />
+
+Chest inventory with slot IDs for reference
+
+### Double Send
+
+Some servers require sending the payment command twice to confirm one payment.
+
+```
+/payall doublesend              # Show current status
+/payall doublesend <delay>      # Enable double send with delay (ms, 0 for no delay)
+/payall doublesend off          # Disable double send
+```
+
+When enabled, each payment command will be sent twice to the same player. The delay ensures proper order: first command → wait for delay → second command → move to next player.
+
+### Different Pay Command
+Use `/payall command /yourcommand` if your server uses something other than `/pay`. (Tab scan would query this command as well for player discovery).
+
+## Pay Everyone
+
+### Executing the actual payments with the settings applied
+
+```
+/payall <amount> <delay>              # Discovers and pay <amount> to players (set <delay> in ms in between)
+/payall <amount1>-<amount2> <delay>   # Payment amount could be a set range (Payment amount randomized)
+```
+
+1. **Auto-Scan**: Scans all prefixes (a-z, 0-9, _) to discover players via tab completion
+2. **Fallback**: If scan finds no players, uses players from the tab list instead
+3. **Confirmation**: Shows dialog with:
+   - Player source (tabscan/tab list/manual add)
+   - Pay command being used
+   - Number of players to pay
+   - Number of players excluded
+   - Number of players added
+   - Auto-confirm slot status
+   - Double send status
+4. **Payment**: After `/payall confirm`, pays all players in random order with the applied settings
+
+### Stop Payment Process
+
+```
+/payall stop
+```
+Stops the current payment process if one is running.
+
+**Tip**: You can also press the **K** key (default keybind) to stop payments in progress
+
+
+## Additional Options
+
+### Keybinds
+
+| Action | Default Key | Description |
+|--------|-------------|-------------|
+| Stop Payment/Scan | `K` | Instantly stops any running payment or tab scan |
+
+**To change**: Options → Controls → Key Binds → Pay Everyone
+
+### Tab Scan
+
+Tab scan automatically starts when `/payall` is ran in servers with payment autocomplete, however, you can still run it manually.  
+
+```
+/payall tabscan <delay>            # Reads through /pay autofills to find avaliable players to pay, delay between each prefix search adjustable
 /payall tabscan stop               # Stop scan in progress
 ```
 
@@ -58,75 +132,29 @@ Tab scan queries the server's `/pay` command autocomplete to discover players be
 
 **Tip**: You can also press the **K** key (default keybind) to instantly stop tab scan
 
-#### Pay All Players
-```
-/payall <amount> <delay>
-```
-- `amount`: Payment amount 
-- `delay`: Milliseconds between each payment, left on blank default is `1000` (recommended to prevent kick).
-
-Pay all players sequentialy from the pay list in a random order.
-
-**Example with random amounts:**
-```
-/payall 300-3000 
-```
-This will pay each player a random amount between 300 and 3000
-
-#### Stop Payment Process
-```
-/payall stop
-```
-Stops the current payment process if one is running.
-
-**Tip**: You can also press the **K** key (default keybind) to instantly stop payments
-
-#### Exclude Players
-```
-/payall exclude <player1> <player2>
-/payall exclude Player1 Player2
-```
-Exclude specific players from receiving payments. Autocomplete is available showing players from your pay list.
-
-#### Add Players to Pay List
+### Manually Add Players to Pay List
 ```
 /payall add <player1> <player2> <player3>
 /payall add Player1 Player2 Player3
 ```
 Manually add players to the payment list. 
 
-#### Remove Manually Added Players 
+### Remove Manually Added Players 
 ```
 /payall remove exclude <player1> <player2>    # Remove from exclusion list
 /payall remove add <player1> <player2>       # Remove from manual add list
 ```
-### Auto-Confirm (Confirmation Menus)
 
-Some servers show a confirmation menu before processing each payment. The auto-confirm feature automatically clicks the confirm button for you.
-
-#### Set Confirm Slot
+### Clear Lists
 ```
-/payall confirmclickslot <slot>           # Enable auto-click on slot ID
-/payall confirmclickslot <slot> <delay>   # Enable with custom delay (50-2000ms)
-/payall confirmclickslot                  # Show current status
-/payall confirmclickslot off              # Disable auto-confirm
-```
-<img width="250" height="250" alt="image" src="https://github.com/user-attachments/assets/d1d47821-481e-4a63-9856-e0f281ebb0af" />
-
-
-Chest inventory with slot IDs for reference
-
-#### Clear Lists
-```
+/payall clear all          # Clear everything
 /payall clear exclude      # Clear excluded players
 /payall clear add          # Clear manually added players
 /payall clear tabscan      # Clear tab scan results
-/payall clear all          # Clear everything
 ```
 
-#### View Player Lists
+### View Player Lists
 ```
-/payall info                       # Show payment information
 /payall list                       # Show debug info
 /payall list tabscan               # List tab scan players
 /payall list add                   # List manually added players
@@ -137,12 +165,13 @@ Chest inventory with slot IDs for reference
 
  **Player Discovery**: The mod collects players from multiple sources:
    - Default tab menu (limited to ~150 players)
-   - Tab scan (queries server autocomplete for `/pay` command)
+   - Tab scan (queries server payment command autocomplete)
+   - Tab menu player list (fallback when payment command could not be qeuried, limited to ~150 players)
    - Manual player list (you add players)
 
 **Payment Process**: 
    - Player order are randomized before payment
-   - Wait for a set interval between each command excution
+   - Waits for a set interval between each command excution
    - Excluded players are skipped
    - Process can be stopped at any time
 
@@ -157,7 +186,8 @@ Chest inventory with slot IDs for reference
    - Automatically clicks the specified slot after a short delay
    - Only active during payment process
    - Configurable slot ID and click delay
-
+   - When double send enabled, the same payment is sent twice
+   
 ## Building from Source
 
 ### Prerequisites
@@ -167,10 +197,12 @@ Chest inventory with slot IDs for reference
 
 ### Build Steps
 
+The mod supports building for Minecraft versions 1.21.4 - 1.21.10
+
 1. Clone the repository:
    ```bash
    git clone https://github.com/aurickk/pay-everyone/
-   cd pay-everyone
+   cd Pay-Everyone
    ```
 
 2. **Windows**: Run `build.bat` and select the version to build
@@ -181,38 +213,7 @@ Chest inventory with slot IDs for reference
    ```
 
 3. Built JARs will be in `build/libs/`:
-   - `pay-everyone-[MINECRAFT_VERSION]-[MOD_VERSIOn].jar`
-
-### Supported Versions
-
-The mod supports building for Minecraft versions:
-- 1.21
-- 1.21.1
-- 1.21.2
-- 1.21.3
-- 1.21.4 (Tested)
-- 1.21.5
-- 1.21.6
-- 1.21.7
-- 1.21.8 (Tested)
-- 1.21.9
-
-
-## Troubleshooting
-
-### Tab Scan Not Finding Players
-
-- Ensure the server has a `/pay [player] [amount]` command
-- Try increasing the scan interval: `/payall tabscan 500`
-- Enable debug mode to see what's happening: `/payall tabscan debug true`
-- Some servers may not support autocomplete for `/pay` - use `/payall add` instead
-
-### Payment Commands Not Working
-
-- Verify you have permission to use `/pay` on the server
-- Ensure you're not already in a payment process (use `/payall stop`)
-
-
+   - `pay-everyone-[MINECRAFT_VERSION]-[MOD_VERSION].jar`
 
 
 
