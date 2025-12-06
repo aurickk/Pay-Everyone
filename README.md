@@ -6,7 +6,7 @@
 </p>
 <h1 align="center">Pay Everyone</h1>
 
-<p align="center">Become MrBeast!</p>
+<p align="center">A client-side Fabric mod that automatically scans and pay all online players on multiplayer servers. Be like Mister Beast!</p>
 
 
 ## Features
