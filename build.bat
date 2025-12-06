@@ -94,9 +94,18 @@ for %%v in (%VERSIONS%) do (
         echo SUCCESS: Minecraft %%v
         set "SUCCESS=!SUCCESS! %%v"
         
-        REM Copy to output folder
+        REM Copy to output folder with version-specific name
         if not exist "output" mkdir output
-        copy "build\libs\pay-everyone-%%v-1.0.2.jar" "output\" >nul 2>&1
+        if exist "build\libs\pay-everyone-%%v-1.0.2.jar" (
+            copy "build\libs\pay-everyone-%%v-1.0.2.jar" "output\pay-everyone-%%v-1.0.2.jar" >nul
+            if errorlevel 1 (
+                echo WARNING: Failed to copy JAR for %%v
+            ) else (
+                echo Copied: pay-everyone-%%v-1.0.2.jar
+            )
+        ) else (
+            echo WARNING: JAR file not found for %%v
+        )
     )
 )
 
