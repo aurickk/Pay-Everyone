@@ -137,7 +137,6 @@ Tab scan queries the server's `/pay` command autocomplete to discover players be
 /payall add <player1> <player2> <player3>
 /payall add Player1 Player2 Player3
 ```
-Manually add players to the payment list. 
 
 ### Remove Manually Added Players 
 ```
@@ -161,6 +160,7 @@ Manually add players to the payment list.
 /payall list exclude                # List excluded players
 /payall list tablist                # List default tab menu players
 ```
+
 ## How It Works
 
  **Player Discovery**: The mod collects players from multiple sources:
