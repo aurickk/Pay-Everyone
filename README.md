@@ -32,9 +32,7 @@
 4. Place both mods in your `.minecraft/mods` folder
 5. Launch Minecraft
 
-# Usage
-
-## Important Pre-Payment Setup
+## Setup
 
 Not always necessary but allows for more customizations
 
@@ -64,9 +62,7 @@ Chest inventory with slot IDs for reference
 ### Different Pay Command
 Use `/payall command /yourcommand` if your server uses something other than `/pay`.
 
-## Pay Everyone
-
-### Executing the actual payments with the settings applied
+## Usage
 
 ```
 /payall <amount> <delay>              # Discovers and pay <amount> to players (set <delay> in ms in between)
