@@ -13,7 +13,7 @@
 
 - **Pay Everyone**: Automatically discorvers and pay all online players with a single command
 - **Customizable Delays**: Set delay between each payment to prevent command spam kick
-- **Auto-Confirm**: Automatically click confirmation buttons or double send payments for payment verifications
+- **Auto-Confirm**: Automatically click confirmation buttons
 - **Player Exclusions**: Exclude specific players from receiving payments
 - **Randomized Payment Order**: Payments are sent in random order to avoid patterns
 - **Random Amounts**: Support for random payment amounts within a range (e.g., 300-3000)
@@ -60,18 +60,6 @@ Some servers show a confirmation menu before processing each payment. The auto-c
 <img width="250" height="250" alt="image" src="https://github.com/user-attachments/assets/d1d47821-481e-4a63-9856-e0f281ebb0af" />
 
 Chest inventory with slot IDs for reference
-
-### Double Send
-
-Some servers require sending the payment command twice to confirm one payment.
-
-```
-/payall doublesend              # Show current status
-/payall doublesend <delay>      # Enable double send with delay (ms, 0 for no delay)
-/payall doublesend off          # Disable double send
-```
-
-When enabled, each payment command will be sent twice to the same player. The delay ensures proper order: first command → wait for delay → second command → move to next player.
 
 ### Different Pay Command
 Use `/payall command /yourcommand` if your server uses something other than `/pay`. (Tab scan would query this command as well for player discovery).
@@ -160,6 +148,17 @@ Tab scan queries the server's `/pay` command autocomplete to discover players be
 /payall list exclude                # List excluded players
 /payall list tablist                # List default tab menu players
 ```
+### Double Send
+
+Some servers require sending the payment command twice to confirm one payment.
+
+```
+/payall doublesend              # Show current status
+/payall doublesend <delay>      # Enable double send with delay (ms, 0 for no delay)
+/payall doublesend off          # Disable double send
+```
+
+When enabled, each payment command will be sent twice to the same player. The delay ensures proper order: first command → wait for delay → second command → move to next player.
 
 ## How It Works
 
