@@ -62,7 +62,7 @@ Some servers show a confirmation menu before processing each payment. The auto-c
 Chest inventory with slot IDs for reference
 
 ### Different Pay Command
-Use `/payall command /yourcommand` if your server uses something other than `/pay`. (Tab scan would query this command as well for player discovery).
+Use `/payall command /yourcommand` if your server uses something other than `/pay`.
 
 ## Pay Everyone
 
@@ -73,7 +73,7 @@ Use `/payall command /yourcommand` if your server uses something other than `/pa
 /payall <amount1>-<amount2> <delay>   # Payment amount could be a set range (Payment amount randomized)
 ```
 
-1. **Auto-Scan**: Scans all prefixes (a-z, 0-9, _) to discover players via tab completion
+1. **Tab Scan**: Scans all prefixes (a-z, 0-9, _) to discover players via tab completion
 2. **Fallback**: If scan finds no players, uses players from the tab list instead
 3. **Confirmation**: Shows dialog with:
    - Player source (tabscan/tab list/manual add)
@@ -212,7 +212,7 @@ The mod supports building for Minecraft versions 1.21.4 - 1.21.10
    ```
 
 3. Built JARs will be in `build/libs/`:
-   - `pay-everyone-[MINECRAFT_VERSION]-[MOD_VERSION].jar`
+   - `pay-everyone-[version]-[mod_version].jar`
 
 
 
