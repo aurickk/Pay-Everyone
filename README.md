@@ -202,9 +202,9 @@ The mod supports building for Minecraft versions 1.21.4 - 1.21.10
 
 2. **Windows**: Run `build.bat` and select the version to build
    
-   **Linux/Mac**: Build for a specific version:
+   **Linux/Mac**:
    ```bash
-   ./gradlew clean build "-PMC_VERSION=[MINECRAFT_VERSION]"
+   ./gradlew clean build
    ```
 
 3. Built JARs will be in `build/libs/`:
