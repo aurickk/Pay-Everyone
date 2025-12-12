@@ -3,7 +3,6 @@
 	"package": "pay.everyone.mod.mixin.client",
 	"compatibilityLevel": "JAVA_21",
 	"client": [
-		"ExampleClientMixin",
 		"ClientPacketListenerMixin"
 	],
 	"injectors": {
