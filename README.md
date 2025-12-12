@@ -67,19 +67,15 @@ Use `/payall command /yourcommand` if your server uses something other than `/pa
 ```
 /payall <amount> <delay>              # Discovers and pay <amount> to players (set <delay> in ms in between)
 /payall <amount1>-<amount2> <delay>   # Payment amount could be a set range (Payment amount randomized)
+/payall <amount/range> auto <delay>   # Automatically calculates payment per player 
 ```
-
-1. **Tab Scan**: Scans all prefixes (a-z, 0-9, _) to discover players via tab completion
-2. **Fallback**: If scan finds no players, uses players from the tab list instead
-3. **Confirmation**: Shows dialog with:
-   - Player source (tabscan/tab list/manual add)
-   - Pay command being used
-   - Number of players to pay
-   - Number of players excluded
-   - Number of players added
-   - Auto-confirm slot status
-   - Double send status
-4. **Payment**: After `/payall confirm`, pays all players in random order with the applied settings
+1. **Amount Parsing**: Converts shortened numbers (k/m/b/t) to actual values
+   - `4.9k` → 4,900, `2.5m` → 2,500,000, `1b` → 1,000,000,000, `5t` → 5,000,000,000,000
+3. **`Auto`** divides amount of money by the number of players (for distributing entire balances equally)
+2. **Tab Scan**: Scans all prefixes (a-z, 0-9, _) on servers with payment username autocomplete
+3. **Fallback**: If scan finds no players, uses players from the tab list instead
+4. **Confirmation**: Shows dialog with payment configuration status
+5. **Payment**: After `/payall confirm`, pays all players in random order with the applied settings
 
 ### Stop Payment Process
 
