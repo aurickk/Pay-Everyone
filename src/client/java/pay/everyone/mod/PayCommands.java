@@ -4,6 +4,7 @@ import com.mojang.brigadier.CommandDispatcher;
 import com.mojang.brigadier.arguments.IntegerArgumentType;
 import com.mojang.brigadier.arguments.LongArgumentType;
 import com.mojang.brigadier.arguments.StringArgumentType;
+import com.mojang.brigadier.context.CommandContext;
 import com.mojang.brigadier.suggestion.SuggestionProvider;
 import net.fabricmc.fabric.api.client.command.v2.ClientCommandManager;
 import net.fabricmc.fabric.api.client.command.v2.FabricClientCommandSource;
@@ -13,38 +14,29 @@ import java.util.List;
 
 public class PayCommands {
     private static final PayManager payManager = PayManager.getInstance();
-    
-    // Pending payment info for confirmation
     private static String pendingAmount = null;
     private static long pendingDelay = 1000;
+    private static boolean pendingAutoMode = false;
     
-    // Suggestion provider for player names (for exclude command)
     private static final SuggestionProvider<FabricClientCommandSource> PLAYER_SUGGESTIONS = (context, builder) -> {
         List<String> players = payManager.getPlayersForAutocomplete();
         String input = builder.getRemaining();
-        
-        // Handle space-separated player names - get the last partial name being typed
         String[] parts = input.split("\\s+");
         String lastPart = parts.length > 0 ? parts[parts.length - 1].toLowerCase() : "";
         
-        // If input ends with space, we're starting a new name
         if (input.endsWith(" ") || input.isEmpty()) {
             lastPart = "";
         }
         
-        // Calculate the start position for suggestions
         int startPos = builder.getStart();
         if (parts.length > 1 || (parts.length == 1 && input.endsWith(" "))) {
-            // Find where the last word starts
             int lastSpaceIndex = input.lastIndexOf(' ');
             if (lastSpaceIndex >= 0) {
                 startPos = builder.getStart() + lastSpaceIndex + 1;
             }
         }
         
-        // Create a new builder at the correct position
         var newBuilder = builder.createOffset(startPos);
-        
         for (String player : players) {
             if (player.toLowerCase().startsWith(lastPart) && !payManager.isExcluded(player)) {
                 newBuilder.suggest(player);
@@ -53,10 +45,19 @@ public class PayCommands {
         return newBuilder.buildFuture();
     };
     
-    /**
-     * Show the confirmation dialog and then run payment if user confirms
-     */
-    private static void showConfirmationAndPay(FabricClientCommandSource source, String amountOrRange, long delayMs) {
+    private static int checkNotBusy(CommandContext<FabricClientCommandSource> context) {
+        if (payManager.isPaying()) {
+            context.getSource().sendError(Component.literal("§c[Pay Everyone] Payment in progress! Use '/payall stop' first."));
+            return 0;
+        }
+        if (payManager.isTabScanning()) {
+            context.getSource().sendError(Component.literal("§c[Pay Everyone] Tab scan in progress! Use '/payall tabscan stop'."));
+            return 0;
+        }
+        return 1;
+    }
+    
+    private static void showConfirmationAndPay(FabricClientCommandSource source, String amountOrRange, long delayMs, boolean autoMode) {
         int playerCount = payManager.getOnlinePlayerCount();
         int excludedCount = payManager.getExclusionCount();
         int addedCount = payManager.getManualPlayerCount();
@@ -66,7 +67,6 @@ public class PayCommands {
         boolean doubleSend = payManager.isDoubleSendEnabled();
         long doubleSendDelay = payManager.getDoubleSendDelay();
         
-        // Show confirmation info
         source.sendFeedback(Component.literal("§6========== Payment Confirmation =========="));
         source.sendFeedback(Component.literal(String.format("§e  Player source: §f%s", method)));
         source.sendFeedback(Component.literal(String.format("§e  Pay command: §f/%s", payCommand)));
@@ -74,108 +74,114 @@ public class PayCommands {
         source.sendFeedback(Component.literal(String.format("§e  Players excluded: §f%d", excludedCount)));
         source.sendFeedback(Component.literal(String.format("§e  Players added: §f%d", addedCount)));
         source.sendFeedback(Component.literal(String.format("§e  Auto-confirm slot: §f%s", confirmSlot >= 0 ? String.valueOf(confirmSlot) : "disabled")));
+        
         if (doubleSend) {
-            if (doubleSendDelay > 0) {
-                source.sendFeedback(Component.literal(String.format("§e  Double send: §f%s (%dms delay)", "enabled", doubleSendDelay)));
-            } else {
-                source.sendFeedback(Component.literal(String.format("§e  Double send: §f%s (no delay)", "enabled")));
+            String delayText = doubleSendDelay > 0 ? String.format("(%dms delay)", doubleSendDelay) : "(no delay)";
+            source.sendFeedback(Component.literal(String.format("§e  Double send: §fenabled %s", delayText)));
+        } else {
+            source.sendFeedback(Component.literal("§e  Double send: §fdisabled"));
+        }
+        
+        if (autoMode && playerCount > 0) {
+            try {
+                long totalAmount = PayManager.parseShortNumber(amountOrRange);
+                long perPlayerAmount = totalAmount / playerCount;
+                source.sendFeedback(Component.literal(String.format("§e  Total amount: §f%s §7(%s)", amountOrRange, PayManager.formatShortNumber(totalAmount))));
+                source.sendFeedback(Component.literal(String.format("§e  Per player: §f%s §7(%s ÷ %d)", PayManager.formatShortNumber(perPlayerAmount), PayManager.formatShortNumber(totalAmount), playerCount)));
+            } catch (NumberFormatException e) {
+                source.sendFeedback(Component.literal(String.format("§e  Amount: §f%s §7(auto mode)", amountOrRange)));
             }
         } else {
-            source.sendFeedback(Component.literal(String.format("§e  Double send: §f%s", "disabled")));
+            try {
+                long amount = PayManager.parseShortNumber(amountOrRange);
+                if (!amountOrRange.matches("\\d+")) {
+                    source.sendFeedback(Component.literal(String.format("§e  Amount: §f%s §7(%s)", amountOrRange, PayManager.formatShortNumber(amount))));
+                } else {
+                    source.sendFeedback(Component.literal(String.format("§e  Amount: §f%s", amountOrRange)));
+                }
+            } catch (NumberFormatException e) {
+                source.sendFeedback(Component.literal(String.format("§e  Amount: §f%s", amountOrRange)));
+            }
         }
-        source.sendFeedback(Component.literal(String.format("§e  Amount: §f%s", amountOrRange)));
         source.sendFeedback(Component.literal(String.format("§e  Delay: §f%dms", delayMs)));
         source.sendFeedback(Component.literal("§6=========================================="));
         
         if (playerCount == 0) {
             source.sendError(Component.literal("§c[Pay Everyone] No players to pay!"));
             pendingAmount = null;
+            pendingAutoMode = false;
             return;
         }
         
         source.sendFeedback(Component.literal("§a[Pay Everyone] Type §f/payall confirm §ato continue."));
-        
-        // Store pending payment info
         pendingAmount = amountOrRange;
         pendingDelay = delayMs;
+        pendingAutoMode = autoMode;
     }
 
     public static void register(CommandDispatcher<FabricClientCommandSource> dispatcher) {
-        // Register /payall command with subcommands
         dispatcher.register(ClientCommandManager.literal("payall")
-                // Main payment command: /payall <amount> [delay] (delay defaults to 1000ms)
                 .then(ClientCommandManager.argument("amount", StringArgumentType.string())
-                        // /payall <amount> - uses default delay of 1000ms
                         .executes(context -> {
-                            if (payManager.isPaying()) {
-                                context.getSource().sendError(Component.literal("§c[Pay Everyone] Payment process is already in progress! Use '/payall stop' to stop it first."));
-                                return 0;
-                            }
-                            if (payManager.isTabScanning()) {
-                                context.getSource().sendError(Component.literal("§c[Pay Everyone] Tab scan is in progress! Wait for it to complete or use '/payall tabscan stop'."));
-                                return 0;
-                            }
+                            if (checkNotBusy(context) == 0) return 0;
                             String amountOrRange = StringArgumentType.getString(context, "amount");
-                            
-                            // Start the process: check command, scan if available, then show confirmation
-                            payManager.startPaymentWithScan(amountOrRange, 1000, () -> {
-                                showConfirmationAndPay(context.getSource(), amountOrRange, 1000);
-                            });
+                            payManager.startPaymentWithScan(amountOrRange, 1000, () -> 
+                                showConfirmationAndPay(context.getSource(), amountOrRange, 1000, false));
                             return 1;
                         })
-                        // /payall <amount> <delay> - custom delay
+                        .then(ClientCommandManager.literal("auto")
+                                .executes(context -> {
+                                    if (checkNotBusy(context) == 0) return 0;
+                                    String amountOrRange = StringArgumentType.getString(context, "amount");
+                                    payManager.startPaymentWithScan(amountOrRange, 1000, () -> 
+                                        showConfirmationAndPay(context.getSource(), amountOrRange, 1000, true));
+                                    return 1;
+                                })
+                                .then(ClientCommandManager.argument("delay", LongArgumentType.longArg(0))
+                                        .executes(context -> {
+                                            if (checkNotBusy(context) == 0) return 0;
+                                            String amountOrRange = StringArgumentType.getString(context, "amount");
+                                            long delay = LongArgumentType.getLong(context, "delay");
+                                            payManager.startPaymentWithScan(amountOrRange, delay, () -> 
+                                                showConfirmationAndPay(context.getSource(), amountOrRange, delay, true));
+                                            return 1;
+                                        })))
                         .then(ClientCommandManager.argument("delay", LongArgumentType.longArg(0))
                                 .executes(context -> {
-                                    if (payManager.isPaying()) {
-                                        context.getSource().sendError(Component.literal("§c[Pay Everyone] Payment process is already in progress! Use '/payall stop' to stop it first."));
-                                        return 0;
-                                    }
-                                    if (payManager.isTabScanning()) {
-                                        context.getSource().sendError(Component.literal("§c[Pay Everyone] Tab scan is in progress! Wait for it to complete or use '/payall tabscan stop'."));
-                                        return 0;
-                                    }
+                                    if (checkNotBusy(context) == 0) return 0;
                                     String amountOrRange = StringArgumentType.getString(context, "amount");
                                     long delay = LongArgumentType.getLong(context, "delay");
-                                    
-                                    // Start the process: check command, scan if available, then show confirmation
-                                    payManager.startPaymentWithScan(amountOrRange, delay, () -> {
-                                        showConfirmationAndPay(context.getSource(), amountOrRange, delay);
-                                    });
+                                    payManager.startPaymentWithScan(amountOrRange, delay, () -> 
+                                        showConfirmationAndPay(context.getSource(), amountOrRange, delay, false));
                                     return 1;
                                 })))
-                // Subcommand: /payall confirm - confirm pending payment
                 .then(ClientCommandManager.literal("confirm")
                         .executes(context -> {
                             if (pendingAmount == null) {
-                                context.getSource().sendError(Component.literal("§c[Pay Everyone] No pending payment to confirm. Run '/payall <amount>' first."));
+                                context.getSource().sendError(Component.literal("§c[Pay Everyone] No pending payment. Run '/payall <amount>' first."));
                                 return 0;
                             }
                             if (payManager.isPaying()) {
                                 context.getSource().sendError(Component.literal("§c[Pay Everyone] Payment already in progress!"));
                                 return 0;
                             }
-                            
                             String amount = pendingAmount;
                             long delay = pendingDelay;
-                            pendingAmount = null; // Clear pending
+                            boolean autoMode = pendingAutoMode;
+                            pendingAmount = null;
+                            pendingAutoMode = false;
                             
-                            boolean success = payManager.payAll(amount, delay);
-                            if (!success) {
-                                context.getSource().sendError(Component.literal("§c[Pay Everyone] Failed to start payment process."));
+                            if (!payManager.payAll(amount, delay, autoMode)) {
+                                context.getSource().sendError(Component.literal("§c[Pay Everyone] Failed to start payment."));
                                 return 0;
                             }
                             return 1;
                         }))
-                // Subcommand: /payall command <command> - set custom pay command
                 .then(ClientCommandManager.literal("command")
                         .executes(context -> {
-                            String currentCommand = payManager.getPayCommand();
                             context.getSource().sendFeedback(Component.literal(
-                                String.format("§6[Pay Everyone] Current pay command: §f/%s", currentCommand)
-                            ));
-                            context.getSource().sendFeedback(Component.literal(
-                                "§7  Use '/payall command <command>' to change it"
-                            ));
+                                String.format("§6[Pay Everyone] Current pay command: §f/%s", payManager.getPayCommand())));
+                            context.getSource().sendFeedback(Component.literal("§7  Use '/payall command <command>' to change it"));
                             return 1;
                         })
                         .then(ClientCommandManager.argument("cmd", StringArgumentType.greedyString())
@@ -183,104 +189,81 @@ public class PayCommands {
                                     String cmd = StringArgumentType.getString(context, "cmd");
                                     payManager.setPayCommand(cmd);
                                     context.getSource().sendFeedback(Component.literal(
-                                        String.format("§a[Pay Everyone] Pay command set to: §f/%s", payManager.getPayCommand())
-                                    ));
+                                        String.format("§a[Pay Everyone] Pay command set to: §f/%s", payManager.getPayCommand())));
                                     return 1;
                                 })))
-                // Subcommand: /payall exclude <players>
                 .then(ClientCommandManager.literal("exclude")
                         .then(ClientCommandManager.argument("players", StringArgumentType.greedyString())
                                 .suggests(PLAYER_SUGGESTIONS)
                                 .executes(context -> {
                                     String playersArg = StringArgumentType.getString(context, "players");
                                     String[] players = playersArg.split("\\s+");
-                                    
                                     if (players.length == 0 || (players.length == 1 && players[0].isEmpty())) {
-                                        context.getSource().sendError(Component.literal("§c[Pay Everyone] Please specify at least one player name"));
+                                        context.getSource().sendError(Component.literal("§c[Pay Everyone] Specify at least one player"));
                                         return 0;
                                     }
-
                                     payManager.addExcludedPlayers(players);
                                     context.getSource().sendFeedback(Component.literal(
-                                        String.format("§a[Pay Everyone] Added %d player(s) to exclusion list: %s", 
-                                            players.length, String.join(", ", players))
-                                    ));
+                                        String.format("§a[Pay Everyone] Excluded %d player(s): %s", players.length, String.join(", ", players))));
                                     return 1;
                                 })))
-                // Subcommand: /payall clear - with subcommands
                 .then(ClientCommandManager.literal("clear")
-                        // /payall clear exclude - clear excluded players
                         .then(ClientCommandManager.literal("exclude")
                                 .executes(context -> {
                                     payManager.clearExclusions();
                                     context.getSource().sendFeedback(Component.literal("§a[Pay Everyone] Cleared all exclusions"));
                                     return 1;
                                 }))
-                        // /payall clear add - clear manually added players
                         .then(ClientCommandManager.literal("add")
                                 .executes(context -> {
                                     payManager.clearManualPlayers();
                                     context.getSource().sendFeedback(Component.literal("§a[Pay Everyone] Cleared manually added players"));
                                     return 1;
                                 }))
-                        // /payall clear tabscan - clear tabscan results
                         .then(ClientCommandManager.literal("tabscan")
                                 .executes(context -> {
                                     payManager.clearTabScanList();
                                     context.getSource().sendFeedback(Component.literal("§a[Pay Everyone] Cleared tab scan results"));
                                     return 1;
                                 }))
-                        // /payall clear all - clear everything
                         .then(ClientCommandManager.literal("all")
                                 .executes(context -> {
                                     payManager.clearExclusions();
                                     payManager.clearManualPlayers();
                                     payManager.clearTabScanList();
-                                    context.getSource().sendFeedback(Component.literal("§a[Pay Everyone] Cleared all lists (exclusions, manual, tabscan)"));
+                                    context.getSource().sendFeedback(Component.literal("§a[Pay Everyone] Cleared all lists"));
                                     return 1;
                                 })))
-                // Subcommand: /payall add <players>
                 .then(ClientCommandManager.literal("add")
                         .then(ClientCommandManager.argument("players", StringArgumentType.greedyString())
                                 .executes(context -> {
                                     String playersArg = StringArgumentType.getString(context, "players");
-                                    String[] players = playersArg.split("[, ]+"); // Split by comma or space
-                                    
+                                    String[] players = playersArg.split("[, ]+");
                                     if (players.length == 0 || (players.length == 1 && players[0].isEmpty())) {
-                                        context.getSource().sendError(Component.literal("§c[Pay Everyone] Please specify at least one player name"));
+                                        context.getSource().sendError(Component.literal("§c[Pay Everyone] Specify at least one player"));
                                         return 0;
                                     }
-
                                     PayManager.AddPlayersResult result = payManager.addManualPlayers(players);
-                                    
                                     if (!result.added.isEmpty()) {
                                         context.getSource().sendFeedback(Component.literal(
-                                            String.format("§a[Pay Everyone] Added %d player(s) to payment list: %s", 
-                                                result.added.size(), String.join(", ", result.added))
-                                        ));
+                                            String.format("§a[Pay Everyone] Added %d player(s): %s", result.added.size(), String.join(", ", result.added))));
                                     }
-                                    
                                     if (!result.duplicates.isEmpty()) {
                                         context.getSource().sendFeedback(Component.literal(
-                                            String.format("§e[Pay Everyone] Skipped %d player(s) already on list: %s", 
-                                                result.duplicates.size(), String.join(", ", result.duplicates))
-                                        ));
+                                            String.format("§e[Pay Everyone] Skipped %d duplicate(s): %s", result.duplicates.size(), String.join(", ", result.duplicates))));
                                     }
-                                    
                                     if (result.added.isEmpty() && result.duplicates.isEmpty()) {
-                                        context.getSource().sendError(Component.literal("§c[Pay Everyone] No valid player names provided"));
+                                        context.getSource().sendError(Component.literal("§c[Pay Everyone] No valid player names"));
                                         return 0;
                                     }
-                                    
                                     return 1;
                                 })))
-                // Subcommand: /payall stop
                 .then(ClientCommandManager.literal("stop")
                         .executes(context -> {
                             boolean stopped = false;
                             if (payManager.isPaying()) {
                                 payManager.stopPaying();
-                                context.getSource().sendFeedback(Component.literal("§c[Pay Everyone] Stopping payment process..."));
+                                context.getSource().sendFeedback(Component.literal("§c[Pay Everyone] Stopping payment..."));
                                 stopped = true;
                             }
                             if (payManager.isTabScanning()) {
@@ -290,6 +273,7 @@ public class PayCommands {
                             }
                             if (pendingAmount != null) {
                                 pendingAmount = null;
+                                pendingAutoMode = false;
                                 context.getSource().sendFeedback(Component.literal("§c[Pay Everyone] Pending payment cancelled."));
                                 stopped = true;
                             }
@@ -298,29 +282,26 @@ public class PayCommands {
                             }
                             return 1;
                         }))
-                // Subcommand: /payall tabscan [interval] - scan players via tab completion
                 .then(ClientCommandManager.literal("tabscan")
                         .executes(context -> {
                             if (payManager.isTabScanning()) {
-                                context.getSource().sendError(Component.literal("§c[Pay Everyone] Tab scan already in progress! Use '/payall tabscan stop' to stop it."));
+                                context.getSource().sendError(Component.literal("§c[Pay Everyone] Tab scan already in progress!"));
                                 return 0;
                             }
-                            context.getSource().sendFeedback(Component.literal("§6[Pay Everyone] ⚠ WARNING: Stay still during tab scan!"));
-                            payManager.queryPlayersViaTabComplete(); // Default 500ms
+                            context.getSource().sendFeedback(Component.literal("§6[Pay Everyone] ⚠ Stay still during tab scan!"));
+                            payManager.queryPlayersViaTabComplete();
                             return 1;
                         })
                         .then(ClientCommandManager.argument("interval", LongArgumentType.longArg(50, 5000))
                                 .executes(context -> {
                                     if (payManager.isTabScanning()) {
-                                        context.getSource().sendError(Component.literal("§c[Pay Everyone] Tab scan already in progress! Use '/payall tabscan stop' to stop it."));
+                                        context.getSource().sendError(Component.literal("§c[Pay Everyone] Tab scan already in progress!"));
                                         return 0;
                                     }
-                                    context.getSource().sendFeedback(Component.literal("§6[Pay Everyone] ⚠ WARNING: Stay still during tab scan!"));
-                                    long interval = LongArgumentType.getLong(context, "interval");
-                                    payManager.queryPlayersViaTabComplete(interval);
+                                    context.getSource().sendFeedback(Component.literal("§6[Pay Everyone] ⚠ Stay still during tab scan!"));
+                                    payManager.queryPlayersViaTabComplete(LongArgumentType.getLong(context, "interval"));
                                     return 1;
                                 }))
-                        // /payall tabscan stop - stop tab scan in progress
                         .then(ClientCommandManager.literal("stop")
                                 .executes(context -> {
                                     if (payManager.stopTabScan()) {
@@ -330,173 +311,125 @@ public class PayCommands {
                                     }
                                     return 1;
                                 }))
-                        // /payall tabscan debug - toggle debug mode for tabscan
                         .then(ClientCommandManager.literal("debug")
                                 .executes(context -> {
                                     boolean newState = !payManager.isDebugMode();
                                     payManager.setDebugMode(newState);
                                     context.getSource().sendFeedback(Component.literal(
-                                        String.format("§6[Pay Everyone] Tab scan debug: %s", newState ? "§aENABLED" : "§cDISABLED")
-                                    ));
+                                        String.format("§6[Pay Everyone] Debug: %s", newState ? "§aENABLED" : "§cDISABLED")));
                                     return 1;
                                 })
                                 .then(ClientCommandManager.literal("true")
                                         .executes(context -> {
                                             payManager.setDebugMode(true);
-                                            context.getSource().sendFeedback(Component.literal("§6[Pay Everyone] Tab scan debug: §aENABLED"));
+                                            context.getSource().sendFeedback(Component.literal("§6[Pay Everyone] Debug: §aENABLED"));
                                             return 1;
                                         }))
                                 .then(ClientCommandManager.literal("false")
                                         .executes(context -> {
                                             payManager.setDebugMode(false);
-                                            context.getSource().sendFeedback(Component.literal("§6[Pay Everyone] Tab scan debug: §cDISABLED"));
+                                            context.getSource().sendFeedback(Component.literal("§6[Pay Everyone] Debug: §cDISABLED"));
                                             return 1;
                                         }))))
-                // Subcommand: /payall remove - remove players from lists
                 .then(ClientCommandManager.literal("remove")
-                        // /payall remove exclude <players> - remove from exclusion list
                         .then(ClientCommandManager.literal("exclude")
                                 .then(ClientCommandManager.argument("players", StringArgumentType.greedyString())
                                         .executes(context -> {
                                             String playersArg = StringArgumentType.getString(context, "players");
                                             String[] players = playersArg.split("\\s+");
-                                            
                                             if (players.length == 0 || (players.length == 1 && players[0].isEmpty())) {
-                                                context.getSource().sendError(Component.literal("§c[Pay Everyone] Please specify at least one player name"));
+                                                context.getSource().sendError(Component.literal("§c[Pay Everyone] Specify at least one player"));
                                                 return 0;
                                             }
-
                                             List<String> removed = payManager.removeExcludedPlayers(players);
                                             if (removed.isEmpty()) {
-                                                context.getSource().sendFeedback(Component.literal(
-                                                    "§e[Pay Everyone] None of the specified players were in the exclusion list"
-                                                ));
+                                                context.getSource().sendFeedback(Component.literal("§e[Pay Everyone] None found in exclusion list"));
                                             } else {
                                                 context.getSource().sendFeedback(Component.literal(
-                                                    String.format("§a[Pay Everyone] Removed %d player(s) from exclusion list: %s", 
-                                                        removed.size(), String.join(", ", removed))
-                                                ));
+                                                    String.format("§a[Pay Everyone] Removed %d from exclusions: %s", removed.size(), String.join(", ", removed))));
                                             }
                                             return 1;
                                         })))
-                        // /payall remove add <players> - remove from manual add list
                         .then(ClientCommandManager.literal("add")
                                 .then(ClientCommandManager.argument("players", StringArgumentType.greedyString())
                                         .executes(context -> {
                                             String playersArg = StringArgumentType.getString(context, "players");
                                             String[] players = playersArg.split("\\s+");
-                                            
                                             if (players.length == 0 || (players.length == 1 && players[0].isEmpty())) {
-                                                context.getSource().sendError(Component.literal("§c[Pay Everyone] Please specify at least one player name"));
+                                                context.getSource().sendError(Component.literal("§c[Pay Everyone] Specify at least one player"));
                                                 return 0;
                                             }
-
                                             List<String> removed = payManager.removeManualPlayers(players);
                                             if (removed.isEmpty()) {
-                                                context.getSource().sendFeedback(Component.literal(
-                                                    "§e[Pay Everyone] None of the specified players were in the add list"
-                                                ));
+                                                context.getSource().sendFeedback(Component.literal("§e[Pay Everyone] None found in add list"));
                                             } else {
                                                 context.getSource().sendFeedback(Component.literal(
-                                                    String.format("§a[Pay Everyone] Removed %d player(s) from add list: %s", 
-                                                        removed.size(), String.join(", ", removed))
-                                                ));
+                                                    String.format("§a[Pay Everyone] Removed %d from add list: %s", removed.size(), String.join(", ", removed))));
                                             }
                                             return 1;
                                         }))))
-                // Subcommand: /payall list - list players (200 max)
                 .then(ClientCommandManager.literal("list")
                         .executes(context -> {
-                            // Show debug info
-                            String debugInfo = payManager.getDebugPlayerLists();
-                            for (String line : debugInfo.split("\n")) {
+                            for (String line : payManager.getDebugPlayerLists().split("\n")) {
                                 context.getSource().sendFeedback(Component.literal(line));
                             }
                             return 1;
                         })
-                        // /payall list tabscan - list tabscan players
                         .then(ClientCommandManager.literal("tabscan")
                                 .executes(context -> {
                                     List<String> players = payManager.getPlayerListSample("tabscan", 200);
-                                    context.getSource().sendFeedback(Component.literal("§6[Pay Everyone] Tab Scan Players (showing up to 200):"));
-                                    if (players.isEmpty()) {
-                                        context.getSource().sendFeedback(Component.literal("§7  No players in tab scan list. Run '/payall tabscan' first."));
-                                    } else {
-                                        context.getSource().sendFeedback(Component.literal("§f  " + String.join(", ", players)));
-                                    }
+                                    context.getSource().sendFeedback(Component.literal("§6[Pay Everyone] Tab Scan Players (max 200):"));
+                                    context.getSource().sendFeedback(Component.literal(players.isEmpty() ? "§7  (empty)" : "§f  " + String.join(", ", players)));
                                     return 1;
                                 }))
-                        // /payall list add - list manually added players
                         .then(ClientCommandManager.literal("add")
                                 .executes(context -> {
                                     List<String> players = payManager.getPlayerListSample("add", 200);
-                                    context.getSource().sendFeedback(Component.literal("§6[Pay Everyone] Manually Added Players (showing up to 200):"));
-                                    if (players.isEmpty()) {
-                                        context.getSource().sendFeedback(Component.literal("§7  No manually added players. Use '/payall add <players>' to add."));
-                                    } else {
-                                        context.getSource().sendFeedback(Component.literal("§f  " + String.join(", ", players)));
-                                    }
+                                    context.getSource().sendFeedback(Component.literal("§6[Pay Everyone] Manually Added (max 200):"));
+                                    context.getSource().sendFeedback(Component.literal(players.isEmpty() ? "§7  (empty)" : "§f  " + String.join(", ", players)));
                                     return 1;
                                 }))
-                        // /payall list exclude - list excluded players
                         .then(ClientCommandManager.literal("exclude")
                                 .executes(context -> {
                                     List<String> players = payManager.getPlayerListSample("exclude", 200);
-                                    context.getSource().sendFeedback(Component.literal("§6[Pay Everyone] Excluded Players (showing up to 200):"));
-                                    if (players.isEmpty()) {
-                                        context.getSource().sendFeedback(Component.literal("§7  No excluded players."));
-                                    } else {
-                                        context.getSource().sendFeedback(Component.literal("§f  " + String.join(", ", players)));
-                                    }
+                                    context.getSource().sendFeedback(Component.literal("§6[Pay Everyone] Excluded (max 200):"));
+                                    context.getSource().sendFeedback(Component.literal(players.isEmpty() ? "§7  (empty)" : "§f  " + String.join(", ", players)));
                                     return 1;
                                 }))
-                        // /payall list tablist - list tab list players
                         .then(ClientCommandManager.literal("tablist")
                                 .executes(context -> {
                                     List<String> players = payManager.getPlayerListSample("tablist", 200);
-                                    context.getSource().sendFeedback(Component.literal("§6[Pay Everyone] Tab List Players (showing up to 200):"));
-                                    if (players.isEmpty()) {
-                                        context.getSource().sendFeedback(Component.literal("§7  No players in tab list."));
-                                    } else {
-                                        context.getSource().sendFeedback(Component.literal("§f  " + String.join(", ", players)));
-                                    }
+                                    context.getSource().sendFeedback(Component.literal("§6[Pay Everyone] Tab List (max 200):"));
+                                    context.getSource().sendFeedback(Component.literal(players.isEmpty() ? "§7  (empty)" : "§f  " + String.join(", ", players)));
                                     return 1;
                                 })))
-                // Subcommand: /payall confirmclickslot - auto-click confirmation menu slot
                 .then(ClientCommandManager.literal("confirmclickslot")
-                        // Show current status when no argument
                         .executes(context -> {
                             int currentSlot = payManager.getConfirmClickSlot();
                             if (currentSlot < 0) {
                                 context.getSource().sendFeedback(Component.literal("§6[Pay Everyone] Auto-confirm: §cDISABLED"));
-                                context.getSource().sendFeedback(Component.literal("§7  Use '/payall confirmclickslot <slotid>' to enable"));
+                                context.getSource().sendFeedback(Component.literal("§7  Use '/payall confirmclickslot <slot>' to enable"));
                             } else {
                                 context.getSource().sendFeedback(Component.literal(
-                                    String.format("§6[Pay Everyone] Auto-confirm: §aENABLED §7(slot %d, %dms delay)", 
-                                        currentSlot, payManager.getConfirmClickDelay())
-                                ));
+                                    String.format("§6[Pay Everyone] Auto-confirm: §aENABLED §7(slot %d, %dms)", currentSlot, payManager.getConfirmClickDelay())));
                                 context.getSource().sendFeedback(Component.literal("§7  Use '/payall confirmclickslot off' to disable"));
                             }
                             return 1;
                         })
-                        // /payall confirmclickslot off - disable auto-confirm
                         .then(ClientCommandManager.literal("off")
                                 .executes(context -> {
                                     payManager.setConfirmClickSlot(-1);
                                     context.getSource().sendFeedback(Component.literal("§a[Pay Everyone] Auto-confirm disabled"));
                                     return 1;
                                 }))
-                        // /payall confirmclickslot <slotid> - set slot to click
                         .then(ClientCommandManager.argument("slotid", IntegerArgumentType.integer(0))
                                 .executes(context -> {
                                     int slotId = IntegerArgumentType.getInteger(context, "slotid");
                                     payManager.setConfirmClickSlot(slotId);
                                     context.getSource().sendFeedback(Component.literal(
-                                        String.format("§a[Pay Everyone] Auto-confirm enabled! Will click slot %d on confirmation menus.", slotId)
-                                    ));
+                                        String.format("§a[Pay Everyone] Auto-confirm slot %d enabled", slotId)));
                                     return 1;
                                 })
-                                // /payall confirmclickslot <slotid> <delay> - set slot and delay
                                 .then(ClientCommandManager.argument("delay", LongArgumentType.longArg(50, 2000))
                                         .executes(context -> {
                                             int slotId = IntegerArgumentType.getInteger(context, "slotid");
@@ -504,53 +437,38 @@ public class PayCommands {
                                             payManager.setConfirmClickSlot(slotId);
                                             payManager.setConfirmClickDelay(delay);
                                             context.getSource().sendFeedback(Component.literal(
-                                                String.format("§a[Pay Everyone] Auto-confirm enabled! Slot: %d, Delay: %dms", slotId, delay)
-                                            ));
+                                                String.format("§a[Pay Everyone] Auto-confirm: slot %d, %dms delay", slotId, delay)));
                                             return 1;
                                         }))))
-                // Subcommand: /payall doublesend - send payment command twice
                 .then(ClientCommandManager.literal("doublesend")
-                        // Show current status when no argument
                         .executes(context -> {
                             boolean isEnabled = payManager.isDoubleSendEnabled();
                             long delay = payManager.getDoubleSendDelay();
                             if (isEnabled) {
-                                if (delay > 0) {
-                                    context.getSource().sendFeedback(Component.literal(
-                                        String.format("§6[Pay Everyone] Double send: §aENABLED §7(%dms delay)", delay)
-                                    ));
-                                } else {
-                                    context.getSource().sendFeedback(Component.literal("§6[Pay Everyone] Double send: §aENABLED §7(no delay)"));
-                                }
-                                context.getSource().sendFeedback(Component.literal("§7  Payment commands will be sent twice to the same player"));
+                                String delayText = delay > 0 ? String.format("(%dms delay)", delay) : "(no delay)";
+                                context.getSource().sendFeedback(Component.literal(String.format("§6[Pay Everyone] Double send: §aENABLED §7%s", delayText)));
                                 context.getSource().sendFeedback(Component.literal("§7  Use '/payall doublesend off' to disable"));
-                                context.getSource().sendFeedback(Component.literal("§7  Use '/payall doublesend <delay>' to set delay"));
                             } else {
                                 context.getSource().sendFeedback(Component.literal("§6[Pay Everyone] Double send: §cDISABLED"));
-                                context.getSource().sendFeedback(Component.literal("§7  Use '/payall doublesend <delay>' to enable (0 for no delay)"));
+                                context.getSource().sendFeedback(Component.literal("§7  Use '/payall doublesend <delay>' to enable"));
                             }
                             return 1;
                         })
-                        // /payall doublesend off - disable double send
                         .then(ClientCommandManager.literal("off")
                                 .executes(context -> {
                                     payManager.setDoubleSend(false);
                                     context.getSource().sendFeedback(Component.literal("§a[Pay Everyone] Double send disabled"));
                                     return 1;
                                 }))
-                        // /payall doublesend <delay> - enable double send with delay
                         .then(ClientCommandManager.argument("delay", LongArgumentType.longArg(0))
                                 .executes(context -> {
                                     long delay = LongArgumentType.getLong(context, "delay");
                                     payManager.setDoubleSend(true);
                                     payManager.setDoubleSendDelay(delay);
-                                    if (delay > 0) {
-                                        context.getSource().sendFeedback(Component.literal(
-                                            String.format("§a[Pay Everyone] Double send enabled! Payment commands will be sent twice with %dms delay.", delay)
-                                        ));
-                                    } else {
-                                        context.getSource().sendFeedback(Component.literal("§a[Pay Everyone] Double send enabled! Payment commands will be sent twice (no delay)."));
-                                    }
+                                    String msg = delay > 0 
+                                        ? String.format("§a[Pay Everyone] Double send enabled (%dms delay)", delay)
+                                        : "§a[Pay Everyone] Double send enabled (no delay)";
+                                    context.getSource().sendFeedback(Component.literal(msg));
                                     return 1;
                                 }))));
     }
