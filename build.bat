@@ -70,7 +70,7 @@ if errorlevel 1 (
 )
 echo.
 echo BUILD SUCCESSFUL!
-echo Output: build\libs\pay-everyone-%MC_VER%-1.0.2.jar
+echo Output: build\libs\pay-everyone-%MC_VER%-1.0.3.jar
 goto end
 
 :build_all
@@ -96,12 +96,12 @@ for %%v in (%VERSIONS%) do (
         
         REM Copy to output folder with version-specific name
         if not exist "output" mkdir output
-        if exist "build\libs\pay-everyone-%%v-1.0.2.jar" (
-            copy "build\libs\pay-everyone-%%v-1.0.2.jar" "output\pay-everyone-%%v-1.0.2.jar" >nul
+        if exist "build\libs\pay-everyone-%%v-1.0.3.jar" (
+            copy "build\libs\pay-everyone-%%v-1.0.3.jar" "output\pay-everyone-%%v-1.0.3.jar" >nul
             if errorlevel 1 (
                 echo WARNING: Failed to copy JAR for %%v
             ) else (
-                echo Copied: pay-everyone-%%v-1.0.2.jar
+                echo Copied: pay-everyone-%%v-1.0.3.jar
             )
         ) else (
             echo WARNING: JAR file not found for %%v
