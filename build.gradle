@@ -27,11 +27,7 @@ base {
 }
 
 repositories {
-	// Add repositories to retrieve artifacts from in here.
-	// You should only use this when depending on other mods because
-	// Loom adds the essential maven repositories to download Minecraft and libraries from automatically.
-	// See https://docs.gradle.org/current/userguide/declaring_repositories.html
-	// for more information about repositories.
+
 }
 
 loom {
@@ -59,9 +55,31 @@ dependencies {
 
 processResources {
 	inputs.property "version", project.version
+	
+	// Determine Minecraft version range based on the version being built
+	def minecraftVersionRange
+	if (project.hasProperty('MC_VERSION')) {
+		def mcVersion = project.property('MC_VERSION').toString()
+		// For 1.21.1, only support that specific version
+		if (mcVersion == "1.21.1") {
+			minecraftVersionRange = "1.21.1"
+		} else {
+			// For other versions, use the range 1.21.4-1.21.10
+			minecraftVersionRange = ">=1.21.4 <=1.21.10"
+		}
+	} else {
+		// Default to the full range if no MC_VERSION is specified
+		minecraftVersionRange = ">=1.21.4 <=1.21.10"
+	}
+	
+	inputs.property "minecraft_version_range", minecraftVersionRange
+	println "Setting Minecraft version range to: ${minecraftVersionRange}"
 
 	filesMatching("fabric.mod.json") {
-		expand "version": inputs.properties.version
+		expand([
+			"version": project.version,
+			"minecraft_version_range": minecraftVersionRange
+		])
 	}
 }
 
@@ -70,9 +88,7 @@ tasks.withType(JavaCompile).configureEach {
 }
 
 java {
-	// Loom will automatically attach sourcesJar to a RemapSourcesJar task and to the "build" task
-	// if it is present.
-	// If you remove this line, sources will not be generated.
+
 	withSourcesJar()
 
 	sourceCompatibility = JavaVersion.VERSION_21
@@ -95,12 +111,7 @@ publishing {
 			from components.java
 		}
 	}
-
-	// See https://docs.gradle.org/current/userguide/publishing_maven.html for information on how to set up publishing.
 	repositories {
-		// Add repositories to publish to here.
-		// Notice: This block does NOT have the same function as the block in the top level.
-		// The repositories here will be used for publishing your artifact, not for
-		// retrieving dependencies.
+
 	}
 }
