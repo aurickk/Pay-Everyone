@@ -3,12 +3,12 @@
 	"id": "pay-everyone",
 	"version": "${version}",
 	"name": "Pay Everyone",
-	"description": "A client-side mod that allows you to pay everyone on a Minecraft server using the /pay command with customizable delays and player exclusions.",
+	"description": "A client-side Fabric mod that automatically scans and pay all online players on multiplayer servers. Be like Mister Beast!",
 	"authors": [
 		"Aurick"
 	],
 	"contact": {
-		"homepage": "https://github.com/aurickk/pay-everyone/",
+		"homepage": "https://modrinth.com/mod/payeveryone",
 		"sources": "https://github.com/aurickk/pay-everyone/"
 	},
 	"icon": "assets/pay-everyone/icon.png",
@@ -30,7 +30,7 @@
 	],
 	"depends": {
 		"fabricloader": ">=0.15.0",
-		"minecraft": ">=1.21.4 <=1.21.10",
+		"minecraft": "${minecraft_version_range}",
 		"java": ">=21",
 		"fabric-api": "*"
 	}
