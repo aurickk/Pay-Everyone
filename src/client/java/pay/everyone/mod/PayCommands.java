@@ -66,10 +66,14 @@ public class PayCommands {
         int confirmSlot = payManager.getConfirmClickSlot();
         boolean doubleSend = payManager.isDoubleSendEnabled();
         long doubleSendDelay = payManager.getDoubleSendDelay();
+        boolean reverseSyntax = payManager.isReverseSyntaxEnabled();
         
         source.sendFeedback(Component.literal("§6========== Payment Confirmation =========="));
         source.sendFeedback(Component.literal(String.format("§e  Player source: §f%s", method)));
-        source.sendFeedback(Component.literal(String.format("§e  Pay command: §f/%s", payCommand)));
+        String syntaxExample = reverseSyntax 
+            ? String.format("/%s <amount> <player>", payCommand)
+            : String.format("/%s <player> <amount>", payCommand);
+        source.sendFeedback(Component.literal(String.format("§e  Pay command: §f/%s §7(%s)", payCommand, syntaxExample)));
         source.sendFeedback(Component.literal(String.format("§e  Players to pay: §f%d", playerCount)));
         source.sendFeedback(Component.literal(String.format("§e  Players excluded: §f%d", excludedCount)));
         source.sendFeedback(Component.literal(String.format("§e  Players added: §f%d", addedCount)));
@@ -81,6 +85,7 @@ public class PayCommands {
         } else {
             source.sendFeedback(Component.literal("§e  Double send: §fdisabled"));
         }
+        source.sendFeedback(Component.literal(String.format("§e  Reverse syntax: §f%s", reverseSyntax ? "enabled" : "disabled")));
         
         if (autoMode && playerCount > 0) {
             try {
@@ -283,7 +288,30 @@ public class PayCommands {
                             return 1;
                         }))
                 .then(ClientCommandManager.literal("tabscan")
+                        .then(ClientCommandManager.literal("on")
+                                .executes(context -> {
+                                    payManager.setTabScanEnabled(true);
+                                    context.getSource().sendFeedback(Component.literal("§a[Pay Everyone] Tab scan enabled! /payall will use tab scan when available."));
+                                    return 1;
+                                }))
+                        .then(ClientCommandManager.literal("off")
+                                .executes(context -> {
+                                    payManager.setTabScanEnabled(false);
+                                    context.getSource().sendFeedback(Component.literal("§a[Pay Everyone] Tab scan disabled! /payall will skip tab scan and use tab list."));
+                                    return 1;
+                                }))
                         .executes(context -> {
+                            boolean isEnabled = payManager.isTabScanEnabled();
+                            if (isEnabled) {
+                                context.getSource().sendFeedback(Component.literal("§6[Pay Everyone] Tab scan: §aENABLED"));
+                                context.getSource().sendFeedback(Component.literal("§7  /payall will use tab scan when available"));
+                                context.getSource().sendFeedback(Component.literal("§7  Use '/payall tabscan off' to disable"));
+                            } else {
+                                context.getSource().sendFeedback(Component.literal("§6[Pay Everyone] Tab scan: §cDISABLED"));
+                                context.getSource().sendFeedback(Component.literal("§7  /payall will skip tab scan and use tab list"));
+                                context.getSource().sendFeedback(Component.literal("§7  Use '/payall tabscan on' to enable"));
+                            }
+                            
                             if (payManager.isTabScanning()) {
                                 context.getSource().sendError(Component.literal("§c[Pay Everyone] Tab scan already in progress!"));
                                 return 0;
@@ -470,6 +498,38 @@ public class PayCommands {
                                         : "§a[Pay Everyone] Double send enabled (no delay)";
                                     context.getSource().sendFeedback(Component.literal(msg));
                                     return 1;
-                                }))));
+                                })))
+                .then(ClientCommandManager.literal("reversesyntax")
+                        .executes(context -> {
+                            boolean isEnabled = payManager.isReverseSyntaxEnabled();
+                            if (isEnabled) {
+                                context.getSource().sendFeedback(Component.literal("§6[Pay Everyone] Reverse syntax: §aENABLED"));
+                                context.getSource().sendFeedback(Component.literal("§7  Payment format: /<command> <amount> <player>"));
+                                context.getSource().sendFeedback(Component.literal("§7  Use '/payall reversesyntax off' to disable"));
+                            } else {
+                                context.getSource().sendFeedback(Component.literal("§6[Pay Everyone] Reverse syntax: §cDISABLED"));
+                                context.getSource().sendFeedback(Component.literal("§7  Payment format: /<command> <player> <amount>"));
+                                context.getSource().sendFeedback(Component.literal("§7  Use '/payall reversesyntax on' to enable"));
+                            }
+                            return 1;
+                        })
+                        .then(ClientCommandManager.literal("on")
+                                .executes(context -> {
+                                    payManager.setReverseSyntax(true);
+                                    context.getSource().sendFeedback(Component.literal("§a[Pay Everyone] Reverse syntax enabled! Format: /<command> <amount> <player>"));
+                                    return 1;
+                                }))
+                        .then(ClientCommandManager.literal("off")
+                                .executes(context -> {
+                                    payManager.setReverseSyntax(false);
+                                    context.getSource().sendFeedback(Component.literal("§a[Pay Everyone] Reverse syntax disabled! Format: /<command> <player> <amount>"));
+                                    return 1;
+                                })))
+                .then(ClientCommandManager.literal("reset")
+                        .executes(context -> {
+                            payManager.resetAllSettings();
+                            context.getSource().sendFeedback(Component.literal("§a[Pay Everyone] All settings have been reset to default."));
+                            return 1;
+                        })));
     }
 }
