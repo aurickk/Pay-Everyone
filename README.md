@@ -34,8 +34,6 @@
 
 ## Setup
 
-Not always necessary but allows for more customizations
-
 ### Exclude Players
 
 Exclude specific players from receiving payments.
@@ -61,6 +59,16 @@ Chest inventory with slot IDs for reference
 
 ### Different Pay Command
 Use `/payall command /yourcommand` if your server uses something other than `/pay`.
+
+### Reverse Syntax
+
+Some servers use a different payment command syntax where the amount comes before the player name.
+
+```
+/payall reversesyntax          # Show current status
+/payall reversesyntax on        # Enable reverse syntax (format: /pay <amount> <player>)
+/payall reversesyntax off       # Disable reverse syntax (format: /pay <player> <amount>)
+```
 
 ## Usage
 
@@ -89,6 +97,14 @@ Stops the current payment process if one is running.
 
 ## Additional Options
 
+### Reset Settings
+
+Reset all mod settings and cached player lists to defaults.
+
+```
+/payall reset                   # Reset all settings to default
+```
+
 ### Keybinds
 
 | Action | Default Key | Description |
@@ -99,9 +115,9 @@ Stops the current payment process if one is running.
 
 ### Tab Scan
 
-Tab scan automatically starts when `/payall` is ran in servers with payment autocomplete, however, you can still run it manually.  
-
 ```
+/payall tabscan on                 # Enable tab scan during /payall
+/payall tabscan off                # Disable tab scan (uses tab list instead)
 /payall tabscan <delay>            # Reads through /pay autofills to find avaliable players to pay, delay between each prefix search adjustable
 /payall tabscan stop               # Stop scan in progress
 ```
@@ -120,7 +136,7 @@ Tab scan queries the server's `/pay` command autocomplete to discover players be
 
 ### Remove Manually Added Players 
 ```
-/payall remove exclude <player1> <player2>    # Remove from exclusion list
+/payall remove exclude <player1> <player2>   # Remove from exclusion list
 /payall remove add <player1> <player2>       # Remove from manual add list
 ```
 
@@ -137,8 +153,8 @@ Tab scan queries the server's `/pay` command autocomplete to discover players be
 /payall list                       # Show debug info
 /payall list tabscan               # List tab scan players
 /payall list add                   # List manually added players
-/payall list exclude                # List excluded players
-/payall list tablist                # List default tab menu players
+/payall list exclude               # List excluded players
+/payall list tablist               # List default tab menu players
 ```
 ### Double Send
 
@@ -188,7 +204,7 @@ When enabled, each payment command will be sent twice to the same player. The de
 
 ### Build Steps
 
-The mod supports building for Minecraft versions 1.21.4 - 1.21.10
+The mod supports building for Minecraft versions 1.21.4 - 1.21.10 and 1.21.1
 
 1. Clone the repository:
    ```bash
@@ -200,7 +216,7 @@ The mod supports building for Minecraft versions 1.21.4 - 1.21.10
    
    **Linux/Mac**:
    ```bash
-   ./gradlew clean build
+   ./gradlew build "-PMC_VERSION=[minecraft_version]"  
    ```
 
 3. Built JARs will be in `build/libs/`:
