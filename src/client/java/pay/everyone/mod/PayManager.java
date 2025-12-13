@@ -90,6 +90,8 @@ public class PayManager {
     private volatile long confirmClickDelay = 100;
     private volatile boolean doubleSend = false;
     private volatile long doubleSendDelay = 0;
+    private volatile boolean reverseSyntax = false;
+    private volatile boolean tabScanEnabled = true;
     
     private volatile String pendingAmount = null;
     private volatile long pendingDelay = 1000;
@@ -128,6 +130,12 @@ public class PayManager {
     public void setConfirmClickDelay(long delayMs) { this.confirmClickDelay = Math.max(50, delayMs); }
     public void setDoubleSend(boolean enabled) { this.doubleSend = enabled; }
     public void setDoubleSendDelay(long delayMs) { this.doubleSendDelay = Math.max(0, delayMs); }
+    
+    public void setReverseSyntax(boolean enabled) { this.reverseSyntax = enabled; }
+    public boolean isReverseSyntaxEnabled() { return reverseSyntax; }
+    
+    public void setTabScanEnabled(boolean enabled) { this.tabScanEnabled = enabled; }
+    public boolean isTabScanEnabled() { return tabScanEnabled; }
 
     public boolean stopTabScan() {
         if (isTabScanning) {
@@ -219,6 +227,27 @@ public class PayManager {
         lastDiscoveryMethod = "tab list";
         pendingAmount = null;
     }
+    
+    public void resetAllSettings() {
+        synchronized (playerListLock) {
+            manualPlayerList.clear();
+            tabScanPlayerList.clear();
+        }
+        excludedPlayers.clear();
+        
+        confirmClickSlot = -1;
+        confirmClickDelay = 100;
+        doubleSend = false;
+        doubleSendDelay = 0;
+        reverseSyntax = false;
+        tabScanEnabled = true;
+        payCommand = "pay";
+        debugMode = false;
+        scanInterval = 250;
+        pendingAmount = null;
+        pendingAutoMode = false;
+        lastDiscoveryMethod = "tab list";
+    }
 
     public void queryPlayersViaTabComplete() { queryPlayersViaTabComplete(250); }
     
@@ -259,22 +288,31 @@ public class PayManager {
     private void runSequentialScan() {
         Minecraft minecraft = Minecraft.getInstance();
         final String currentPayCommand = payCommand;
+        final boolean isReverse = reverseSyntax;
+        int rangeStartCount = 0;
         
         for (int i = 0; i < SCAN_PREFIXES.length && isTabScanning; i++) {
             final int index = i;
             String prefix = SCAN_PREFIXES[i];
             int requestId = 10000 + i;
             
+            if (i % 5 == 0) {
+                synchronized (playerListLock) { rangeStartCount = tabScanPlayerList.size(); }
+            }
+            
             minecraft.execute(() -> {
                 LocalPlayer player = minecraft.player;
                 if (player != null && player.connection != null) {
-                    String command = "/" + currentPayCommand + " " + prefix;
+                    String command = isReverse 
+                        ? "/" + currentPayCommand + " 1 " + prefix
+                        : "/" + currentPayCommand + " " + prefix;
                     player.connection.send(new ServerboundCommandSuggestionPacket(requestId, command));
                     
                     if (debugMode) {
+                        String debugPrefix = prefix.isEmpty() ? "(empty)" : prefix;
+                        String debugCmd = isReverse ? String.format("/%s 1 %s", currentPayCommand, debugPrefix) : String.format("/%s %s", currentPayCommand, debugPrefix);
                         player.displayClientMessage(net.minecraft.network.chat.Component.literal(
-                            String.format("§8[Debug] [%d/%d] Sent: /%s %s", index + 1, SCAN_PREFIXES.length, 
-                                currentPayCommand, prefix.isEmpty() ? "(empty)" : prefix)), false);
+                            String.format("§8[Debug] [%d/%d] Sent: %s", index + 1, SCAN_PREFIXES.length, debugCmd)), false);
                     }
                 }
             });
@@ -285,6 +323,7 @@ public class PayManager {
                 final int progress = (i + 1) * 100 / SCAN_PREFIXES.length;
                 final int currentCount;
                 synchronized (playerListLock) { currentCount = tabScanPlayerList.size(); }
+                final int rangeFound = currentCount - rangeStartCount;
                 final int rangeStart = (i / 5) * 5;
                 final int rangeEnd = Math.min(rangeStart + 4, SCAN_PREFIXES.length - 1);
                 final String rangeDisplay = getPrefixRangeDisplay(rangeStart, rangeEnd);
@@ -294,7 +333,7 @@ public class PayManager {
                     if (player != null) {
                         player.displayClientMessage(net.minecraft.network.chat.Component.literal(
                             String.format("§e[Pay Everyone] Scanning %s... %d%% - Found %d players", 
-                                rangeDisplay, progress, currentCount)), false);
+                                rangeDisplay, progress, rangeFound)), false);
                     }
                 });
             }
@@ -361,8 +400,12 @@ public class PayManager {
         waitingForCommandCheck = true;
         commandQueryable = false;
         
+        final boolean isReverse = reverseSyntax;
         minecraft.execute(() -> {
-            player.connection.send(new ServerboundCommandSuggestionPacket(COMMAND_CHECK_REQUEST_ID, "/" + payCommand + " "));
+            String checkCommand = isReverse 
+                ? "/" + payCommand + " 1 "
+                : "/" + payCommand + " ";
+            player.connection.send(new ServerboundCommandSuggestionPacket(COMMAND_CHECK_REQUEST_ID, checkCommand));
         });
         
         CompletableFuture.runAsync(() -> {
@@ -401,6 +444,24 @@ public class PayManager {
         
         pendingAmount = amountOrRange;
         pendingDelay = delayMs;
+        
+        if (!tabScanEnabled) {
+            lastDiscoveryMethod = "tab list";
+            minecraft.execute(() -> {
+                LocalPlayer p = minecraft.player;
+                if (p != null) {
+                    p.displayClientMessage(net.minecraft.network.chat.Component.literal(
+                        String.format("§e[Pay Everyone] Tab scan disabled. Using tab list...", payCommand)), false);
+                }
+            });
+            if (onConfirmationReady != null) {
+                CompletableFuture.runAsync(() -> {
+                    try { Thread.sleep(500); } catch (InterruptedException ignored) {}
+                    minecraft.execute(onConfirmationReady);
+                });
+            }
+            return;
+        }
         
         player.displayClientMessage(net.minecraft.network.chat.Component.literal(
             String.format("§e[Pay Everyone] Checking if /%s can be queried...", payCommand)), false);
@@ -670,7 +731,9 @@ public class PayManager {
 
                 String playerName = playersToPay.get(i);
                 long amount = finalIsRange ? (minAmount + random.nextLong(maxAmount - minAmount + 1)) : minAmount;
-                String command = String.format("%s %s %d", payCommand, playerName, amount);
+                String command = reverseSyntax 
+                    ? String.format("%s %d %s", payCommand, amount, playerName)
+                    : String.format("%s %s %d", payCommand, playerName, amount);
                 
                 minecraft.execute(() -> {
                     if (player.connection != null) {
@@ -702,8 +765,14 @@ public class PayManager {
                 paidCount[0]++;
                 final int currentIndex = i + 1;
                 final long finalAmount = amount;
-                minecraft.execute(() -> player.displayClientMessage(net.minecraft.network.chat.Component.literal(
-                    String.format("§e[Pay Everyone] /%s %s %d (%d/%d)", payCommand, playerName, finalAmount, currentIndex, playersToPay.size())), false));
+                final boolean isReverse = reverseSyntax;
+                minecraft.execute(() -> {
+                    String cmdDisplay = isReverse 
+                        ? String.format("/%s %d %s", payCommand, finalAmount, playerName)
+                        : String.format("/%s %s %d", payCommand, playerName, finalAmount);
+                    player.displayClientMessage(net.minecraft.network.chat.Component.literal(
+                        String.format("§e[Pay Everyone] %s (%d/%d)", cmdDisplay, currentIndex, playersToPay.size())), false);
+                });
 
                 if (i < playersToPay.size() - 1 && !shouldStop) {
                     try { Thread.sleep(delayMs); } catch (InterruptedException e) { Thread.currentThread().interrupt(); break; }
