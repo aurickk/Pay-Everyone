@@ -6,48 +6,53 @@ echo    Pay Everyone - Multi-Version Build
 echo ========================================
 echo.
 echo Available Minecraft versions:
-echo   1.  1.21.4 (default)
-echo   2.  1.21.5
-echo   3.  1.21.6
-echo   4.  1.21.7
-echo   5.  1.21.8
-echo   6.  1.21.9
-echo   7.  1.21.10
-echo   8.  Build ALL versions
+echo   1.  1.21.1
+echo   2.  1.21.4 (default)
+echo   3.  1.21.5
+echo   4.  1.21.6
+echo   5.  1.21.7
+echo   6.  1.21.8
+echo   7.  1.21.9
+echo   8.  1.21.10
+echo   9.  Build ALL versions
 echo   0.  Exit
 echo.
 
-set /p choice="Select version to build (0-8): "
+set /p choice="Select version to build (0-9): "
 
 if "%choice%"=="1" (
-    set "MC_VER=1.21.4"
+    set "MC_VER=1.21.1"
     goto build_single
 )
 if "%choice%"=="2" (
-    set "MC_VER=1.21.5"
+    set "MC_VER=1.21.4"
     goto build_single
 )
 if "%choice%"=="3" (
-    set "MC_VER=1.21.6"
+    set "MC_VER=1.21.5"
     goto build_single
 )
 if "%choice%"=="4" (
-    set "MC_VER=1.21.7"
+    set "MC_VER=1.21.6"
     goto build_single
 )
 if "%choice%"=="5" (
-    set "MC_VER=1.21.8"
+    set "MC_VER=1.21.7"
     goto build_single
 )
 if "%choice%"=="6" (
-    set "MC_VER=1.21.9"
+    set "MC_VER=1.21.8"
     goto build_single
 )
 if "%choice%"=="7" (
+    set "MC_VER=1.21.9"
+    goto build_single
+)
+if "%choice%"=="8" (
     set "MC_VER=1.21.10"
     goto build_single
 )
-if "%choice%"=="8" goto build_all
+if "%choice%"=="9" goto build_all
 if "%choice%"=="0" (
     echo Exiting...
     exit /b 0
@@ -70,7 +75,7 @@ if errorlevel 1 (
 )
 echo.
 echo BUILD SUCCESSFUL!
-echo Output: build\libs\pay-everyone-%MC_VER%-1.0.3.jar
+echo Output: build\libs\pay-everyone-%MC_VER%-1.0.4.jar
 goto end
 
 :build_all
@@ -78,7 +83,7 @@ echo.
 echo Building ALL versions...
 echo ========================================
 
-set "VERSIONS=1.21.4 1.21.5 1.21.6 1.21.7 1.21.8 1.21.9 1.21.10"
+set "VERSIONS=1.21.1 1.21.4 1.21.5 1.21.6 1.21.7 1.21.8 1.21.9 1.21.10"
 set "FAILED="
 set "SUCCESS="
 
@@ -96,12 +101,12 @@ for %%v in (%VERSIONS%) do (
         
         REM Copy to output folder with version-specific name
         if not exist "output" mkdir output
-        if exist "build\libs\pay-everyone-%%v-1.0.3.jar" (
-            copy "build\libs\pay-everyone-%%v-1.0.3.jar" "output\pay-everyone-%%v-1.0.3.jar" >nul
+        if exist "build\libs\pay-everyone-%%v-1.0.4.jar" (
+            copy "build\libs\pay-everyone-%%v-1.0.4.jar" "output\pay-everyone-%%v-1.0.4.jar" >nul
             if errorlevel 1 (
                 echo WARNING: Failed to copy JAR for %%v
             ) else (
-                echo Copied: pay-everyone-%%v-1.0.3.jar
+                echo Copied: pay-everyone-%%v-1.0.4.jar
             )
         ) else (
             echo WARNING: JAR file not found for %%v
