@@ -65,7 +65,7 @@ Use `/payall command /yourcommand` if your server uses something other than `/pa
 Some servers use a different payment command syntax where the amount comes before the player name.
 
 ```
-/payall reversesyntax          # Show current status
+/payall reversesyntax           # Show current status
 /payall reversesyntax on        # Enable reverse syntax (format: /pay <amount> <player>)
 /payall reversesyntax off       # Disable reverse syntax (format: /pay <player> <amount>)
 ```
