@@ -8,3 +8,12 @@ pluginManagement {
 		gradlePluginPortal()
 	}
 }
+
+rootProject.name = 'pay-everyone'
+
+include 'legacy'   // 1.21.1-1.21.5
+include 'modern'   // 1.21.6-1.21.10
+
+rootProject.children.each { project ->
+    project.buildFileName = 'build.gradle'
+}
