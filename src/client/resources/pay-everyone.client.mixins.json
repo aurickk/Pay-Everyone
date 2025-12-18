@@ -1,0 +1,11 @@
+{
+	"required": true,
+	"package": "pay.everyone.mod.mixin.client",
+	"compatibilityLevel": "JAVA_21",
+	"client": [
+		"ClientPacketListenerMixin"
+	],
+	"injectors": {
+		"defaultRequire": 0
+	}
+}

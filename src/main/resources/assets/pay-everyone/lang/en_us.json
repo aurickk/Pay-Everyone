@@ -1,0 +1,5 @@
+{
+  "category.payeveryone": "Pay Everyone",
+  "key.payeveryone.toggle_gui": "Open Pay Everyone GUI",
+  "key.payeveryone.cancel_payment": "Force Stop Payment/Scan"
+}
