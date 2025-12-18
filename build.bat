@@ -1,133 +1,44 @@
 @echo off
-setlocal enabledelayedexpansion
+setlocal
 
 echo ========================================
-echo    Pay Everyone - Multi-Version Build
+echo Pay Everyone - Build Script
 echo ========================================
 echo.
-echo Available Minecraft versions:
-echo   1.  1.21.1
-echo   2.  1.21.4 (default)
-echo   3.  1.21.5
-echo   4.  1.21.6
-echo   5.  1.21.7
-echo   6.  1.21.8
-echo   7.  1.21.9
-echo   8.  1.21.10
-echo   9.  Build ALL versions
-echo   0.  Exit
-echo.
 
-set /p choice="Select version to build (0-9): "
+if not exist "dist" mkdir dist
 
-if "%choice%"=="1" (
-    set "MC_VER=1.21.1"
-    goto build_single
-)
-if "%choice%"=="2" (
-    set "MC_VER=1.21.4"
-    goto build_single
-)
-if "%choice%"=="3" (
-    set "MC_VER=1.21.5"
-    goto build_single
-)
-if "%choice%"=="4" (
-    set "MC_VER=1.21.6"
-    goto build_single
-)
-if "%choice%"=="5" (
-    set "MC_VER=1.21.7"
-    goto build_single
-)
-if "%choice%"=="6" (
-    set "MC_VER=1.21.8"
-    goto build_single
-)
-if "%choice%"=="7" (
-    set "MC_VER=1.21.9"
-    goto build_single
-)
-if "%choice%"=="8" (
-    set "MC_VER=1.21.10"
-    goto build_single
-)
-if "%choice%"=="9" goto build_all
-if "%choice%"=="0" (
-    echo Exiting...
-    exit /b 0
-)
+echo Building legacy and modern versions...
+call gradlew.bat clean :legacy:build :modern:build
 
-echo Invalid choice. Please run again.
-pause
-exit /b 1
-
-:build_single
-echo.
-echo Building for Minecraft %MC_VER%...
-echo ----------------------------------------
-call gradlew.bat clean build "-PMC_VERSION=%MC_VER%"
-if errorlevel 1 (
-    echo.
-    echo BUILD FAILED for Minecraft %MC_VER%
-    pause
+if %ERRORLEVEL% neq 0 (
+    echo Build failed!
     exit /b 1
 )
+
 echo.
-echo BUILD SUCCESSFUL!
-echo Output: build\libs\pay-everyone-%MC_VER%-1.0.4.jar
-goto end
+echo Copying JARs to dist...
 
-:build_all
-echo.
-echo Building ALL versions...
-echo ========================================
+for %%f in (legacy\build\libs\*.jar) do (
+    if not "%%~xf"=="-dev.jar" (
+        copy /Y "%%f" "dist\" >nul
+        echo   %%~nxf
+    )
+)
 
-set "VERSIONS=1.21.1 1.21.4 1.21.5 1.21.6 1.21.7 1.21.8 1.21.9 1.21.10"
-set "FAILED="
-set "SUCCESS="
-
-for %%v in (%VERSIONS%) do (
-    echo.
-    echo Building for Minecraft %%v...
-    echo ----------------------------------------
-    call gradlew.bat clean build "-PMC_VERSION=%%v"
-    if errorlevel 1 (
-        echo FAILED: Minecraft %%v
-        set "FAILED=!FAILED! %%v"
-    ) else (
-        echo SUCCESS: Minecraft %%v
-        set "SUCCESS=!SUCCESS! %%v"
-        
-        REM Copy to output folder with version-specific name
-        if not exist "output" mkdir output
-        if exist "build\libs\pay-everyone-%%v-1.0.4.jar" (
-            copy "build\libs\pay-everyone-%%v-1.0.4.jar" "output\pay-everyone-%%v-1.0.4.jar" >nul
-            if errorlevel 1 (
-                echo WARNING: Failed to copy JAR for %%v
-            ) else (
-                echo Copied: pay-everyone-%%v-1.0.4.jar
-            )
-        ) else (
-            echo WARNING: JAR file not found for %%v
-        )
+for %%f in (modern\build\libs\*.jar) do (
+    if not "%%~xf"=="-dev.jar" (
+        copy /Y "%%f" "dist\" >nul
+        echo   %%~nxf
     )
 )
 
 echo.
 echo ========================================
-echo Build Summary:
+echo Build complete! Output in dist\
 echo ========================================
-if "!FAILED!"=="" (
-    echo All versions built successfully!
-) else (
-    echo.
-    echo Successful:!SUCCESS!
-    echo Failed:!FAILED!
-)
+dir /b dist\*.jar 2>nul
 echo.
-echo Output files copied to: output\
 
-:end
-echo.
-pause
+endlocal
+
