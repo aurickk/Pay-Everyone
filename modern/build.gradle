@@ -13,7 +13,7 @@ base {
 println "Building Pay Everyone ${version} for Minecraft ${project.minecraft_version_range} (Modern)"
 
 repositories {
-    maven { url 'https://jitpack.io' }
+    maven { url = 'https://jitpack.io' }
 }
 
 loom {
