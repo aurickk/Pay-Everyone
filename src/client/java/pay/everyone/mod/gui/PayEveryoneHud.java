@@ -47,9 +47,6 @@ public class PayEveryoneHud {
             int windowWidth = mc.getWindow().getWidth();
             int windowHeight = mc.getWindow().getHeight();
             long handle = GLFW.glfwGetCurrentContext();
-            
-            // If Minecraft has the cursor grabbed (camera look), GLFW may report a stale/fake cursor position.
-            // In that case, render with an "offscreen" mouse position so widgets don't think they're hovered.
             int cursorMode = GLFW.glfwGetInputMode(handle, GLFW.GLFW_CURSOR);
             final int mouseX;
             final int mouseY;
@@ -163,7 +160,6 @@ public class PayEveryoneHud {
         if (manuallyHidden) return false;
         if (!inventoryMode && !window.isPinned()) return false;
         if (window.hasFocusedTextField() || window.isCapturingKeybind()) {
-            // Always consume key input while typing/capturing a keybind so vanilla (e.g. InventoryScreen) can't act on it.
             window.keyPressed(keyCode, scanCode, modifiers);
             return true;
         }
@@ -176,10 +172,8 @@ public class PayEveryoneHud {
     
     public void toggle() {
         if (window.isVisible()) {
-            // Currently focused - close/unfocus it
             window.setVisible(false);
         } else {
-            // Not visible (pinned or not) - open/refocus it, keep pin state
             window.setVisible(true);
         }
     }

@@ -62,8 +62,6 @@ public class PayManager {
     private volatile boolean reverseSyntax = false;
     private volatile boolean tabScanEnabled = true;
     private volatile long paymentDelay = 1000;
-
-    // Used to interrupt the payment loop so "Cancel" stops immediately (no waiting out paymentDelay).
     private volatile Thread paymentWorkerThread = null;
     
     private volatile String pendingAmount = null;
@@ -831,6 +829,7 @@ public class PayManager {
 
     public void stopPaying() {
         if ((isPaying || isPaused) && !shouldStop) {
+            addPaymentLog("Cancelled");
             shouldStop = true;
             isPaused = false;
             Thread t = paymentWorkerThread;

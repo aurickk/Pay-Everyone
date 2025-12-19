@@ -167,10 +167,12 @@ public class InputHandler {
         Minecraft mc = Minecraft.getInstance();
         PayEveryoneHud hud = PayEveryoneHud.getInstance();
         
-        if (action == GLFW.GLFW_PRESS) {
+        if (action == GLFW.GLFW_PRESS || action == GLFW.GLFW_REPEAT) {
             try {
                 KeyMapping cancelKey = PayEveryoneClient.getCancelPaymentKey();
-                if (cancelKey != null && matchesKey(cancelKey, key, scancode)) {
+                boolean matched = cancelKey != null && matchesKey(cancelKey, key, scancode);
+                if (!matched && cancelKey != null && scancode != 0) matched = matchesKey(cancelKey, key, 0);
+                if (matched) {
                     PayManager pm = PayManager.getInstance();
                     if (pm.isPaying() || pm.isTabScanning()) {
                         pm.stopPaying();

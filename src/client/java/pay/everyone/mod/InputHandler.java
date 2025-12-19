@@ -108,7 +108,6 @@ public class InputHandler {
         PayEveryoneHud hud = PayEveryoneHud.getInstance();
         double[] scaled = getScaledMousePos(lastMouseX, lastMouseY);
 
-        // Inventory mode: allow the Pay Everyone GUI to consume input while an inventory screen is open.
         if (mc.screen != null && hud.isInventoryMode()) {
             if (action == GLFW.GLFW_PRESS) {
                 lastButton = button;
@@ -121,7 +120,7 @@ public class InputHandler {
             return false;
         }
 
-        if (mc.screen != null) return false; // Let vanilla screens handle input
+        if (mc.screen != null) return false;
         if (!hud.shouldCaptureInput()) return false;
         
         if (action == GLFW.GLFW_PRESS) {
@@ -154,10 +153,12 @@ public class InputHandler {
     private static boolean handleKey(int key, int scancode, int action, int mods) {
         Minecraft mc = Minecraft.getInstance();
         
-        if (action == GLFW.GLFW_PRESS) {
+        if (action == GLFW.GLFW_PRESS || action == GLFW.GLFW_REPEAT) {
             try {
                 if (PayEveryoneClient.getCancelPaymentKey() != null) {
-                    if (matchesKey(PayEveryoneClient.getCancelPaymentKey(), key, scancode)) {
+                    boolean matched = matchesKey(PayEveryoneClient.getCancelPaymentKey(), key, scancode);
+                    if (!matched && scancode != 0) matched = matchesKey(PayEveryoneClient.getCancelPaymentKey(), key, 0);
+                    if (matched) {
                         PayManager pm = PayManager.getInstance();
                         if (pm.isPaying() || pm.isTabScanning()) {
                             pm.stopPaying();
@@ -184,8 +185,6 @@ public class InputHandler {
         }
 
         if (mc.screen != null) return false;
-
-        PayEveryoneHud hud = PayEveryoneHud.getInstance();
         if (!hud.shouldCaptureInput()) return false;
         
         if (action == GLFW.GLFW_PRESS || action == GLFW.GLFW_REPEAT) {
@@ -197,12 +196,10 @@ public class InputHandler {
     
     private static boolean matchesKey(net.minecraft.client.KeyMapping keyMapping, int key, int scancode) {
         try {
-            // Try matches(int, int) first via reflection
             java.lang.reflect.Method matchesMethod = keyMapping.getClass().getMethod("matches", int.class, int.class);
             return (Boolean) matchesMethod.invoke(keyMapping, key, scancode);
         } catch (Throwable t1) {
             try {
-                // Try getKey() via reflection
                 java.lang.reflect.Method getKeyMethod = keyMapping.getClass().getMethod("getKey");
                 Object boundKey = getKeyMethod.invoke(keyMapping);
                 if (boundKey != null) {
@@ -211,7 +208,6 @@ public class InputHandler {
                     return keyValue == key;
                 }
             } catch (Throwable t2) {
-                // Last resort: try key field directly
                 try {
                     java.lang.reflect.Field keyField = keyMapping.getClass().getDeclaredField("key");
                     keyField.setAccessible(true);
