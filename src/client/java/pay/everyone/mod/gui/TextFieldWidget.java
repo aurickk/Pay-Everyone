@@ -49,6 +49,7 @@ public class TextFieldWidget extends Widget {
         String displayText = text.isEmpty() ? hint : text;
         int textColor = text.isEmpty() ? Theme.TEXT_HINT : (enabled ? Theme.TEXT_PRIMARY : Theme.TEXT_DISABLED);
         
+        ensureCursorVisible(font);
         String visibleText = getVisibleText(font, displayText);
         RenderHelper.drawString(graphics, font, visibleText, textX, textY, textColor, false);
         
@@ -59,6 +60,31 @@ public class TextFieldWidget extends Widget {
         }
     }
     
+    private void ensureCursorVisible(net.minecraft.client.gui.Font font) {
+        if (text.isEmpty()) {
+            scrollOffset = 0;
+            cursorPos = 0;
+            return;
+        }
+
+        int len = text.length();
+        if (cursorPos < 0) cursorPos = 0;
+        if (cursorPos > len) cursorPos = len;
+        if (scrollOffset < 0) scrollOffset = 0;
+        if (scrollOffset > len) scrollOffset = len;
+
+        if (cursorPos < scrollOffset) scrollOffset = cursorPos;
+
+        int maxWidth = width - 8;
+        while (scrollOffset < cursorPos && font.width(text.substring(scrollOffset, cursorPos)) > maxWidth) {
+            scrollOffset++;
+        }
+
+        while (scrollOffset > 0 && font.width(text.substring(scrollOffset - 1, cursorPos)) <= maxWidth) {
+            scrollOffset--;
+        }
+    }
+
     private String getVisibleText(net.minecraft.client.gui.Font font, String fullText) {
         int maxWidth = width - 8;
         if (scrollOffset >= fullText.length()) return "";
@@ -189,21 +215,26 @@ public class TextFieldWidget extends Widget {
         } else if (keyCode == GLFW.GLFW_KEY_LEFT && cursorPos > 0) {
             cursorPos--;
             cursorBlinkTimer = 0;
+            ensureCursorVisible(Minecraft.getInstance().font);
             return true;
         } else if (keyCode == GLFW.GLFW_KEY_RIGHT && cursorPos < text.length()) {
             cursorPos++;
             cursorBlinkTimer = 0;
+            ensureCursorVisible(Minecraft.getInstance().font);
             return true;
         } else if (keyCode == GLFW.GLFW_KEY_HOME) {
             cursorPos = 0;
             cursorBlinkTimer = 0;
+            ensureCursorVisible(Minecraft.getInstance().font);
             return true;
         } else if (keyCode == GLFW.GLFW_KEY_END) {
             cursorPos = text.length();
             cursorBlinkTimer = 0;
+            ensureCursorVisible(Minecraft.getInstance().font);
             return true;
         } else if (keyCode == GLFW.GLFW_KEY_A && (modifiers & GLFW.GLFW_MOD_CONTROL) != 0) {
             cursorPos = text.length();
+            ensureCursorVisible(Minecraft.getInstance().font);
             return true;
         }
         
@@ -225,6 +256,7 @@ public class TextFieldWidget extends Widget {
     private void onTextChanged() {
         cursorBlinkTimer = 0;
         if (onChange != null) onChange.accept(text);
+        ensureCursorVisible(Minecraft.getInstance().font);
         updateSuggestions();
     }
     
@@ -264,6 +296,7 @@ public class TextFieldWidget extends Widget {
     public void setText(String text) { 
         this.text = text != null ? text : "";
         this.cursorPos = this.text.length();
+        ensureCursorVisible(Minecraft.getInstance().font);
     }
     public void setOnChange(Consumer<String> onChange) { this.onChange = onChange; }
     public void setAutocompleteProvider(Supplier<List<String>> provider) { this.autocompleteProvider = provider; }
