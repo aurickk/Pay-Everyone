@@ -62,6 +62,9 @@ public class PayManager {
     private volatile boolean reverseSyntax = false;
     private volatile boolean tabScanEnabled = true;
     private volatile long paymentDelay = 1000;
+
+    // Used to interrupt the payment loop so "Cancel" stops immediately (no waiting out paymentDelay).
+    private volatile Thread paymentWorkerThread = null;
     
     private volatile String pendingAmount = null;
     private volatile long pendingDelay = 1000;
@@ -741,6 +744,7 @@ public class PayManager {
         Random random = new Random();
         final int totalPlayers = playersToPay.size();
         CompletableFuture.runAsync(() -> {
+            paymentWorkerThread = Thread.currentThread();
             try {
                 for (int i = 0; i < totalPlayers; i++) {
                     while (isPaused && !shouldStop) {
@@ -811,11 +815,14 @@ public class PayManager {
                 PayEveryone.LOGGER.error("Payment failed", e);
                 addPaymentLog("Error: Payment failed");
                 minecraft.execute(() -> { synchronized (paymentLock) { isPaying = false; } paymentProgress = 0.0f; });
+            } finally {
+                paymentWorkerThread = null;
             }
         }).exceptionally(t -> {
             PayEveryone.LOGGER.error("Payment async task failed", t);
             addPaymentLog("Error: Async task failed");
             Minecraft.getInstance().execute(() -> { synchronized (paymentLock) { isPaying = false; } paymentProgress = 0.0f; });
+            paymentWorkerThread = null;
             return null;
         });
         
@@ -826,6 +833,10 @@ public class PayManager {
         if ((isPaying || isPaused) && !shouldStop) {
             shouldStop = true;
             isPaused = false;
+            Thread t = paymentWorkerThread;
+            if (t != null) {
+                try { t.interrupt(); } catch (Throwable ignored) {}
+            }
             if (debugMode) {
                 PayEveryone.LOGGER.info("Payment stopped by user");
             }

@@ -105,12 +105,24 @@ public class InputHandler {
     
     private static boolean handleMouseButton(int button, int action, int mods) {
         Minecraft mc = Minecraft.getInstance();
-        if (mc.screen != null) return false; // Let vanilla screens handle input
-        
         PayEveryoneHud hud = PayEveryoneHud.getInstance();
-        if (!hud.shouldCaptureInput()) return false;
-        
         double[] scaled = getScaledMousePos(lastMouseX, lastMouseY);
+
+        // Inventory mode: allow the Pay Everyone GUI to consume input while an inventory screen is open.
+        if (mc.screen != null && hud.isInventoryMode()) {
+            if (action == GLFW.GLFW_PRESS) {
+                lastButton = button;
+                return hud.handleInventoryClick(scaled[0], scaled[1], button);
+            } else if (action == GLFW.GLFW_RELEASE) {
+                boolean handled = hud.handleInventoryRelease(scaled[0], scaled[1], button);
+                lastButton = -1;
+                return handled;
+            }
+            return false;
+        }
+
+        if (mc.screen != null) return false; // Let vanilla screens handle input
+        if (!hud.shouldCaptureInput()) return false;
         
         if (action == GLFW.GLFW_PRESS) {
             lastButton = button;
@@ -125,14 +137,17 @@ public class InputHandler {
     
     private static boolean handleScroll(double xOffset, double yOffset) {
         Minecraft mc = Minecraft.getInstance();
-        if (mc.screen != null) return false;
-        
         PayEveryoneHud hud = PayEveryoneHud.getInstance();
-        if (!hud.shouldCaptureInput()) return false;
-        
         double[] scaled = getScaledMousePos(lastMouseX, lastMouseY);
+
+        if (mc.screen != null && hud.isInventoryMode()) {
+            return hud.handleInventoryScroll(scaled[0], scaled[1], yOffset);
+        }
+
+        if (mc.screen != null) return false;
+        if (!hud.shouldCaptureInput()) return false;
+
         hud.handleMouseScrolled(scaled[0], scaled[1], yOffset);
-        
         return true;
     }
     
@@ -142,7 +157,7 @@ public class InputHandler {
         if (action == GLFW.GLFW_PRESS) {
             try {
                 if (PayEveryoneClient.getCancelPaymentKey() != null) {
-                    if (matchesKey(PayEveryoneClient.getCancelPaymentKey(), key)) {
+                    if (matchesKey(PayEveryoneClient.getCancelPaymentKey(), key, scancode)) {
                         PayManager pm = PayManager.getInstance();
                         if (pm.isPaying() || pm.isTabScanning()) {
                             pm.stopPaying();
@@ -158,9 +173,18 @@ public class InputHandler {
                 }
             } catch (Throwable ignored) {}
         }
-        
+
+        PayEveryoneHud hud = PayEveryoneHud.getInstance();
+
+        if (mc.screen != null && hud.isInventoryMode()) {
+            if (action == GLFW.GLFW_PRESS || action == GLFW.GLFW_REPEAT) {
+                return hud.handleInventoryKey(key, scancode, mods);
+            }
+            return false;
+        }
+
         if (mc.screen != null) return false;
-        
+
         PayEveryoneHud hud = PayEveryoneHud.getInstance();
         if (!hud.shouldCaptureInput()) return false;
         
@@ -171,11 +195,11 @@ public class InputHandler {
         return true;
     }
     
-    private static boolean matchesKey(net.minecraft.client.KeyMapping keyMapping, int key) {
+    private static boolean matchesKey(net.minecraft.client.KeyMapping keyMapping, int key, int scancode) {
         try {
             // Try matches(int, int) first via reflection
             java.lang.reflect.Method matchesMethod = keyMapping.getClass().getMethod("matches", int.class, int.class);
-            return (Boolean) matchesMethod.invoke(keyMapping, key, 0);
+            return (Boolean) matchesMethod.invoke(keyMapping, key, scancode);
         } catch (Throwable t1) {
             try {
                 // Try getKey() via reflection
@@ -205,11 +229,15 @@ public class InputHandler {
     
     private static boolean handleChar(int codepoint) {
         Minecraft mc = Minecraft.getInstance();
-        if (mc.screen != null) return false;
-        
         PayEveryoneHud hud = PayEveryoneHud.getInstance();
+
+        if (mc.screen != null && hud.isInventoryMode()) {
+            return hud.handleInventoryChar((char) codepoint, 0);
+        }
+
+        if (mc.screen != null) return false;
         if (!hud.shouldCaptureInput()) return false;
-        
+
         hud.handleCharTyped((char) codepoint, 0);
         return true;
     }
@@ -221,11 +249,23 @@ public class InputHandler {
         lastMouseY = ypos;
         
         Minecraft mc = Minecraft.getInstance();
-        if (mc.screen != null) return false;
-        
         PayEveryoneHud hud = PayEveryoneHud.getInstance();
+
+        if (mc.screen != null && hud.isInventoryMode()) {
+            if (lastButton >= 0) {
+                double[] scaled = getScaledMousePos(xpos, ypos);
+                double[] prevScaled = getScaledMousePos(prevX, prevY);
+                return hud.handleInventoryDrag(
+                    scaled[0], scaled[1], lastButton,
+                    scaled[0] - prevScaled[0], scaled[1] - prevScaled[1]
+                );
+            }
+            return false;
+        }
+
+        if (mc.screen != null) return false;
         if (!hud.shouldCaptureInput()) return false;
-        
+
         if (lastButton >= 0) {
             double[] scaled = getScaledMousePos(xpos, ypos);
             double[] prevScaled = getScaledMousePos(prevX, prevY);

@@ -162,8 +162,10 @@ public class PayEveryoneHud {
     public boolean handleInventoryKey(int keyCode, int scanCode, int modifiers) {
         if (manuallyHidden) return false;
         if (!inventoryMode && !window.isPinned()) return false;
-        if (window.hasFocusedTextField()) {
-            return window.keyPressed(keyCode, scanCode, modifiers);
+        if (window.hasFocusedTextField() || window.isCapturingKeybind()) {
+            // Always consume key input while typing/capturing a keybind so vanilla (e.g. InventoryScreen) can't act on it.
+            window.keyPressed(keyCode, scanCode, modifiers);
+            return true;
         }
         return false;
     }

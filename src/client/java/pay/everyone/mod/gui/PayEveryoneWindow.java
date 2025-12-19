@@ -113,6 +113,10 @@ public class PayEveryoneWindow {
         }
         return false;
     }
+
+    public boolean isCapturingKeybind() {
+        return KeybindWidget.isAnyListening();
+    }
     
     private void addWidget(List<WidgetData> list, Widget w, int relX, int relY) {
         w.setPosition(relX, relY);
