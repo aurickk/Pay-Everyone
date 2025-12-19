@@ -46,12 +46,23 @@ public class PayEveryoneHud {
             int scaledHeight = mc.getWindow().getGuiScaledHeight();
             int windowWidth = mc.getWindow().getWidth();
             int windowHeight = mc.getWindow().getHeight();
+            long handle = GLFW.glfwGetCurrentContext();
             
-            double[] xpos = new double[1];
-            double[] ypos = new double[1];
-            GLFW.glfwGetCursorPos(GLFW.glfwGetCurrentContext(), xpos, ypos);
-            int mouseX = (int)(xpos[0] * scaledWidth / windowWidth);
-            int mouseY = (int)(ypos[0] * scaledHeight / windowHeight);
+            // If Minecraft has the cursor grabbed (camera look), GLFW may report a stale/fake cursor position.
+            // In that case, render with an "offscreen" mouse position so widgets don't think they're hovered.
+            int cursorMode = GLFW.glfwGetInputMode(handle, GLFW.GLFW_CURSOR);
+            final int mouseX;
+            final int mouseY;
+            if (cursorMode != GLFW.GLFW_CURSOR_NORMAL) {
+                mouseX = Integer.MIN_VALUE / 2;
+                mouseY = Integer.MIN_VALUE / 2;
+            } else {
+                double[] xpos = new double[1];
+                double[] ypos = new double[1];
+                GLFW.glfwGetCursorPos(handle, xpos, ypos);
+                mouseX = (int)(xpos[0] * scaledWidth / windowWidth);
+                mouseY = (int)(ypos[0] * scaledHeight / windowHeight);
+            }
             
             RenderHelper.pushPose(graphics);
             RenderHelper.translate(graphics, 0, 0, 10000);
