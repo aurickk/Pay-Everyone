@@ -7,18 +7,11 @@ import pay.everyone.mod.PayEveryone;
 
 import java.lang.reflect.Method;
 
-/**
- * Cross-version rendering helper for Minecraft 1.21.1-1.21.10.
- * 
- * In 1.21.6+, GuiGraphics.pose() returns Matrix3x2fStack instead of PoseStack.
- * Matrix3x2fStack has completely different methods (push/pop, 2D transforms only).
- * This class uses reflection to handle both APIs.
- */
+/** Cross-version rendering helper for 1.21.1–1.21.10 rendering APIs. */
 public class RenderHelper {
     private static boolean initialized = false;
     private static boolean loggedOnce = false;
     
-    // Pose stack handling
     private static boolean hasPoseStack = false;
     private static Method poseMethod = null;
     private static Method pushMethod = null;
@@ -28,14 +21,10 @@ public class RenderHelper {
     private static int translateParamCount = 0;
     private static int scaleParamCount = 0;
     
-    /**
-     * Initialize by detecting available methods via reflection.
-     */
     public static void init(GuiGraphics graphics) {
         if (initialized) return;
         
         try {
-            // Get the pose() method
             poseMethod = GuiGraphics.class.getMethod("pose");
             Object poseStack = poseMethod.invoke(graphics);
             
@@ -43,7 +32,6 @@ public class RenderHelper {
                 Class<?> poseClass = poseStack.getClass();
                 PayEveryone.LOGGER.info("RenderHelper: pose() returns " + poseClass.getName());
                 
-                // Find push/pop methods (pushPose/popPose for PoseStack, push/pop for Matrix3x2fStack)
                 for (Method m : poseClass.getMethods()) {
                     String name = m.getName();
                     int params = m.getParameterCount();
@@ -53,7 +41,6 @@ public class RenderHelper {
                     } else if ((name.equals("popPose") || name.equals("pop")) && params == 0) {
                         popMethod = m;
                     } else if (name.equals("translate")) {
-                        // Find translate method - prefer one with 2 or 3 float/double params
                         Class<?>[] paramTypes = m.getParameterTypes();
                         if (params >= 2 && params <= 3) {
                             if (paramTypes[0] == float.class || paramTypes[0] == double.class) {
@@ -62,7 +49,6 @@ public class RenderHelper {
                             }
                         }
                     } else if (name.equals("scale")) {
-                        // Find scale method
                         Class<?>[] paramTypes = m.getParameterTypes();
                         if (params >= 2 && params <= 3) {
                             if (paramTypes[0] == float.class || paramTypes[0] == double.class) {
@@ -89,9 +75,6 @@ public class RenderHelper {
         PayEveryone.LOGGER.info("RenderHelper: Initialized, poseStack=" + hasPoseStack);
     }
     
-    /**
-     * Draw a string using direct method calls.
-     */
     public static void drawString(GuiGraphics graphics, Font font, String text, int x, int y, int color, boolean shadow) {
         if (graphics == null || font == null || text == null) return;
         if (!initialized) init(graphics);
@@ -122,9 +105,6 @@ public class RenderHelper {
         }
     }
     
-    /**
-     * Fill a rectangle.
-     */
     public static void fill(GuiGraphics graphics, int x1, int y1, int x2, int y2, int color) {
         if (graphics == null) return;
         if (!initialized) init(graphics);
@@ -134,9 +114,6 @@ public class RenderHelper {
         } catch (Throwable t) {}
     }
     
-    /**
-     * Enable scissor clipping.
-     */
     public static void enableScissor(GuiGraphics graphics, int x1, int y1, int x2, int y2) {
         if (graphics == null) return;
         if (!initialized) init(graphics);
@@ -146,9 +123,6 @@ public class RenderHelper {
         } catch (Throwable t) {}
     }
     
-    /**
-     * Disable scissor clipping.
-     */
     public static void disableScissor(GuiGraphics graphics) {
         if (graphics == null) return;
         if (!initialized) init(graphics);
@@ -158,9 +132,6 @@ public class RenderHelper {
         } catch (Throwable t) {}
     }
     
-    /**
-     * Push the pose stack using reflection.
-     */
     public static void pushPose(GuiGraphics graphics) {
         if (graphics == null) return;
         if (!initialized) init(graphics);
@@ -174,9 +145,6 @@ public class RenderHelper {
         } catch (Throwable t) {}
     }
     
-    /**
-     * Pop the pose stack using reflection.
-     */
     public static void popPose(GuiGraphics graphics) {
         if (graphics == null) return;
         if (!initialized) init(graphics);
@@ -190,9 +158,6 @@ public class RenderHelper {
         } catch (Throwable t) {}
     }
     
-    /**
-     * Translate the pose stack using reflection.
-     */
     public static void translate(GuiGraphics graphics, double x, double y, double z) {
         if (graphics == null) return;
         if (!initialized) init(graphics);
@@ -219,9 +184,6 @@ public class RenderHelper {
         } catch (Throwable t) {}
     }
     
-    /**
-     * Scale the pose stack using reflection.
-     */
     public static void scale(GuiGraphics graphics, float x, float y, float z) {
         if (graphics == null) return;
         if (!initialized) init(graphics);
@@ -239,23 +201,14 @@ public class RenderHelper {
         } catch (Throwable t) {}
     }
     
-    /**
-     * Check if matrix scaling is supported.
-     */
     public static boolean supportsMatrixScaling() {
         return hasPoseStack && scaleMethod != null && translateMethod != null;
     }
     
-    /**
-     * Check if we're on a modern version (1.21.6+).
-     */
     public static boolean isModernVersion() {
         return false; // We can't reliably detect at runtime
     }
     
-    /**
-     * Force re-initialization.
-     */
     public static void forceReinit() {
         initialized = false;
         loggedOnce = false;

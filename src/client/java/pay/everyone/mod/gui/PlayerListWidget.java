@@ -22,11 +22,15 @@ public class PlayerListWidget extends Widget {
     private int lastPlayerCount = 0;
     private static final int ITEM_HEIGHT = 14;
     private static final int REMOVE_BTN_SIZE = 10;
+    private static final int SCROLLBAR_WIDTH = 4;
     
-    // Context menu state
     private boolean contextMenuOpen = false;
     private int contextMenuX, contextMenuY;
     private String contextMenuPlayer = null;
+    
+    private boolean draggingScrollbar = false;
+    private int dragStartY = 0;
+    private int dragStartScrollOffset = 0;
     
     public enum ContextAction { EXCLUDE }
     
@@ -46,13 +50,11 @@ public class PlayerListWidget extends Widget {
         int listHeight = height - 12;
         int maxVisible = (listHeight - 2) / ITEM_HEIGHT;
         
-        // Clamp scrollOffset when list shrinks (e.g. from filtering)
         int maxScroll = Math.max(0, players.size() - maxVisible);
         if (scrollOffset > maxScroll) {
             scrollOffset = maxScroll;
         }
         
-        // Auto-scroll to bottom when new items are added
         if (autoScroll && players.size() > lastPlayerCount) {
             scrollOffset = maxScroll;
         }
@@ -73,21 +75,11 @@ public class PlayerListWidget extends Widget {
         RenderHelper.fill(graphics, x, listY, x + 1, listY + listHeight, Theme.BORDER);
         RenderHelper.fill(graphics, x + width - 1, listY, x + width, listY + listHeight, Theme.BORDER);
         
-        // For scissor to work correctly with matrix transforms, we need to:
-        // 1. Pop the current matrix (to get back to screen space)
-        // 2. Apply scissor in screen space
-        // 3. Push matrix again with our transform
-        // 4. Render content
-        // 5. Pop, disable scissor, push again
-        
-        // However, a simpler approach is to compute screen coordinates and use them directly.
-        // The scissor coordinates need to be in the GUI-scaled screen coordinate space.
         int scissorX1 = toScreenX(x + 1);
         int scissorY1 = toScreenY(listY + 1);
         int scissorX2 = toScreenX(x + width - 1);
         int scissorY2 = toScreenY(listY + listHeight - 1);
         
-        // Pop matrix, apply scissor, push matrix back
         if (useMatrixScaling) {
             RenderHelper.popPose(graphics);
         }
@@ -108,7 +100,6 @@ public class PlayerListWidget extends Widget {
                 RenderHelper.fill(graphics, x + 1, itemY, x + width - 1, itemY + ITEM_HEIGHT, Theme.BG_HOVER);
             }
             
-            // Draw player name (truncate if needed to make room for remove button)
             String playerName = players.get(index);
             int maxNameWidth = onRemove != null ? width - REMOVE_BTN_SIZE - 12 : width - 8;
             while (font.width(playerName) > maxNameWidth && playerName.length() > 1) {
@@ -116,7 +107,6 @@ public class PlayerListWidget extends Widget {
             }
             RenderHelper.drawString(graphics, font, playerName, x + 4, itemY + 3, Theme.TEXT_PRIMARY, false);
             
-            // Always show remove button when onRemove is set
             if (onRemove != null) {
                 int btnX = x + width - REMOVE_BTN_SIZE - 6;
                 int btnY = itemY + (ITEM_HEIGHT - REMOVE_BTN_SIZE) / 2;
@@ -128,7 +118,6 @@ public class PlayerListWidget extends Widget {
             }
         }
         
-        // Pop matrix, disable scissor, push matrix back
         if (useMatrixScaling) {
             RenderHelper.popPose(graphics);
         }
@@ -153,15 +142,12 @@ public class PlayerListWidget extends Widget {
     public boolean mouseClicked(double mouseX, double mouseY, int button) {
         if (!visible || !enabled) return false;
         
-        // Handle context menu clicks first
         if (contextMenuOpen) {
             int menuWidth = 70;
             int menuHeight = 18;
             
-            // Check if click is on the menu
             if (mouseX >= contextMenuX && mouseX < contextMenuX + menuWidth && 
                 mouseY >= contextMenuY && mouseY < contextMenuY + menuHeight) {
-                // Execute the action
                 if (contextMenuPlayer != null && onContextAction != null) {
                     onContextAction.accept(contextMenuPlayer, ContextAction.EXCLUDE);
                 }
@@ -170,7 +156,6 @@ public class PlayerListWidget extends Widget {
                 return true;
             }
             
-            // Click outside context menu - close it
             contextMenuOpen = false;
             contextMenuPlayer = null;
             return true;
@@ -179,9 +164,29 @@ public class PlayerListWidget extends Widget {
         int listY = y + 12;
         int listHeight = height - 12;
         int maxVisible = (listHeight - 2) / ITEM_HEIGHT;
+        int maxScroll = Math.max(0, players.size() - maxVisible);
+        
+        if (button == 0 && players.size() > maxVisible) {
+            int scrollbarX = x + width - SCROLLBAR_WIDTH - 1;
+            if (mouseX >= scrollbarX && mouseX < x + width - 1 && mouseY >= listY + 2 && mouseY < listY + listHeight - 2) {
+                int scrollbarHeight = listHeight - 4;
+                int thumbHeight = Math.max(20, scrollbarHeight * maxVisible / players.size());
+                int thumbY = listY + 2 + (scrollbarHeight - thumbHeight) * scrollOffset / Math.max(1, maxScroll);
+                
+                if (mouseY >= thumbY && mouseY < thumbY + thumbHeight) {
+                    draggingScrollbar = true;
+                    dragStartY = (int) mouseY;
+                    dragStartScrollOffset = scrollOffset;
+                    return true;
+                } else {
+                    float clickRatio = (float)(mouseY - listY - 2 - thumbHeight / 2) / (scrollbarHeight - thumbHeight);
+                    scrollOffset = Math.max(0, Math.min(maxScroll, (int)(clickRatio * maxScroll)));
+                    return true;
+                }
+            }
+        }
         
         if (mouseX >= x && mouseX < x + width && mouseY >= listY && mouseY < listY + listHeight) {
-            // Calculate which item was clicked
             int clickedIndex = -1;
             for (int i = 0; i < Math.min(players.size() - scrollOffset, maxVisible); i++) {
                 int itemY = listY + 2 + i * ITEM_HEIGHT;
@@ -191,7 +196,6 @@ public class PlayerListWidget extends Widget {
                 }
             }
             
-            // Right-click to open context menu
             if (button == 1 && clickedIndex >= 0 && clickedIndex < players.size() && onContextAction != null) {
                 contextMenuOpen = true;
                 contextMenuX = (int) mouseX;
@@ -200,7 +204,6 @@ public class PlayerListWidget extends Widget {
                 return true;
             }
             
-            // Left-click for remove button
             if (button == 0 && clickedIndex >= 0 && clickedIndex < players.size() && onRemove != null) {
                 int itemY = listY + 2 + (clickedIndex - scrollOffset) * ITEM_HEIGHT;
                 int btnX = x + width - REMOVE_BTN_SIZE - 4;
@@ -216,6 +219,37 @@ public class PlayerListWidget extends Widget {
             return true;
         }
         return false;
+    }
+    
+    @Override
+    public boolean mouseReleased(double mouseX, double mouseY, int button) {
+        if (draggingScrollbar && button == 0) {
+            draggingScrollbar = false;
+            return true;
+        }
+        return super.mouseReleased(mouseX, mouseY, button);
+    }
+    
+    @Override
+    public boolean mouseDragged(double mouseX, double mouseY, int button, double deltaX, double deltaY) {
+        if (draggingScrollbar && button == 0) {
+            int listHeight = height - 12;
+            int maxVisible = (listHeight - 2) / ITEM_HEIGHT;
+            int maxScroll = Math.max(0, players.size() - maxVisible);
+            
+            if (maxScroll > 0) {
+                int scrollbarHeight = listHeight - 4;
+                int thumbHeight = Math.max(20, scrollbarHeight * maxVisible / players.size());
+                int trackHeight = scrollbarHeight - thumbHeight;
+                
+                if (trackHeight > 0) {
+                    int deltaScroll = (int)((mouseY - dragStartY) * maxScroll / trackHeight);
+                    scrollOffset = Math.max(0, Math.min(maxScroll, dragStartScrollOffset + deltaScroll));
+                }
+            }
+            return true;
+        }
+        return super.mouseDragged(mouseX, mouseY, button, deltaX, deltaY);
     }
     
     @Override

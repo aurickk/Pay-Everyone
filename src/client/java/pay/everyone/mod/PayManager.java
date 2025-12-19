@@ -47,8 +47,8 @@ public class PayManager {
     private volatile boolean isTabScanning = false;
     private volatile boolean debugMode = false;
     private volatile boolean scanCompleted = false;
-    private volatile boolean isAutoScan = false; // True when scan was auto-started from payAll
-    private volatile long scanInterval = 250;
+    private volatile boolean isAutoScan = false;
+    private volatile long scanInterval = 50;
     private volatile float scanProgress = 0.0f;
     private volatile float paymentProgress = 0.0f;
     private volatile String lastPaymentLog = "";
@@ -61,7 +61,7 @@ public class PayManager {
     private volatile long doubleSendDelay = 1000;
     private volatile boolean reverseSyntax = false;
     private volatile boolean tabScanEnabled = true;
-    private volatile long paymentDelay = 1000; // Dynamic delay between payments
+    private volatile long paymentDelay = 1000;
     
     private volatile String pendingAmount = null;
     private volatile long pendingDelay = 1000;
@@ -142,7 +142,6 @@ public class PayManager {
         }
     }
     
-    // Scan logs
     private final List<String> scanLogs = new ArrayList<>();
     private static final int MAX_SCAN_LOGS = 100;
     
@@ -205,10 +204,8 @@ public class PayManager {
             isPaused = false;
             isTabScanning = false;
             scanCompleted = true;
-            // Clear the tab scan list when cancelled mid-scan
             synchronized (playerListLock) { tabScanPlayerList.clear(); }
             scanProgress = 0.0f;
-            // Clear any pending payment that was waiting for this scan
             pendingAmount = null;
             pendingAutoMode = false;
             pendingConfirmationCallback = null;
@@ -252,7 +249,7 @@ public class PayManager {
     public void addExcludedPlayers(String... players) {
         for (String player : players) {
             String cleaned = player.trim();
-            if (isValidPlayerName(cleaned)) excludedPlayers.add(cleaned.toLowerCase());
+            if (!cleaned.isEmpty()) excludedPlayers.add(cleaned.toLowerCase());
         }
     }
 
@@ -262,10 +259,9 @@ public class PayManager {
         synchronized (playerListLock) {
             for (String player : players) {
                 String cleaned = player.trim();
-                if (isValidPlayerName(cleaned)) {
-                    if (manualPlayerList.contains(cleaned)) duplicates.add(cleaned);
-                    else { manualPlayerList.add(cleaned); added.add(cleaned); }
-                }
+                if (cleaned.isEmpty()) continue;
+                if (manualPlayerList.contains(cleaned)) duplicates.add(cleaned);
+                else { manualPlayerList.add(cleaned); added.add(cleaned); }
             }
         }
         return new AddPlayersResult(added, duplicates);
@@ -330,7 +326,7 @@ public class PayManager {
         tabScanEnabled = true;
         payCommand = "pay";
         debugMode = false;
-        scanInterval = 250;
+        scanInterval = 50;
         paymentDelay = 1000;
         lastError = null;
     }
@@ -376,7 +372,6 @@ public class PayManager {
         processedRequestIds.clear();
         synchronized (playerListLock) { tabScanPlayerList.clear(); }
         
-        // Clear logs when starting a new scan
         clearScanLogs();
         addScanLog(String.format("Starting scan (%d prefixes, %dms interval)", SCAN_PREFIXES.length, scanInterval));
         if (debugMode) {
@@ -399,7 +394,6 @@ public class PayManager {
         scanProgress = 0.0f;
         
         for (int i = 0; i < SCAN_PREFIXES.length && isTabScanning && !shouldStop; i++) {
-            // Handle pause
             while (isPaused && isTabScanning && !shouldStop) {
                 try { Thread.sleep(100); } catch (InterruptedException e) { Thread.currentThread().interrupt(); return; }
             }
@@ -416,7 +410,6 @@ public class PayManager {
                 }
             });
             
-            // Update progress
             scanProgress = (float)(i + 1) / SCAN_PREFIXES.length;
             
             try { Thread.sleep(scanInterval); } catch (InterruptedException e) { Thread.currentThread().interrupt(); break; }
@@ -427,7 +420,6 @@ public class PayManager {
     private void finishScan() {
         synchronized (scanLock) { 
         if (scanCompleted) return;
-            // Only cache results for manual scans, not auto scans
             scanCompleted = !isAutoScan;
         }
         isTabScanning = false;
@@ -516,7 +508,6 @@ public class PayManager {
         
         checkCommandQueryable().thenAccept(queryable -> {
             if (queryable) {
-                // Optional chat warning only in debug mode to avoid noisy feedback during normal use
                 if (debugMode) {
                 minecraft.execute(() -> {
                     LocalPlayer p = minecraft.player;
@@ -564,7 +555,6 @@ public class PayManager {
                     foundCount++;
         }
             }
-            // Always log per-prefix results
             addScanLog(String.format("Prefix %s: +%d (total: %d)", prefixDisplay, foundCount, tabScanPlayerList.size()));
         }
     }
@@ -672,7 +662,6 @@ public class PayManager {
             return false;
         }
 
-        // If tabScan is enabled but not completed and no scan results exist, start scan first
         boolean hasTabScanResults;
         synchronized (playerListLock) { hasTabScanResults = !tabScanPlayerList.isEmpty(); }
         if (tabScanEnabled && !scanCompleted && !isTabScanning && !hasTabScanResults) {
@@ -740,6 +729,12 @@ public class PayManager {
         isPaused = false;
         paymentProgress = 0.0f;
         
+        if (confirmClickSlot >= 0) {
+            minecraft.execute(() -> {
+                pay.everyone.mod.gui.PayEveryoneHud.getInstance().getWindow().setPinned(true);
+            });
+        }
+        
         String amountDisplay = finalIsRange ? String.format("%d-%d", minAmount, maxAmount) : String.valueOf(minAmount);
         addPaymentLog(String.format("Starting: %d players, %s each", playersToPay.size(), amountDisplay));
 
@@ -748,7 +743,6 @@ public class PayManager {
         CompletableFuture.runAsync(() -> {
             try {
                 for (int i = 0; i < totalPlayers; i++) {
-                    // Handle pause
                     while (isPaused && !shouldStop) {
                         try { Thread.sleep(100); } catch (InterruptedException e) { Thread.currentThread().interrupt(); return; }
                     }
@@ -788,7 +782,6 @@ public class PayManager {
                     addPaymentLog(String.format("[%d/%d] /%s %s %d", idx, totalPlayers, payCommand, playerName, amt));
 
                     if (i < totalPlayers - 1 && !shouldStop) {
-                        // Use dynamic delay that can be changed during payment
                         try { Thread.sleep(paymentDelay); } catch (InterruptedException e) { Thread.currentThread().interrupt(); break; }
                 }
             }
@@ -799,7 +792,6 @@ public class PayManager {
                         synchronized (paymentLock) { isPaying = false; }
                         paymentProgress = 1.0f;
                         addPaymentLog(String.format("Done! Paid %d players", finalTotal));
-                        // Clear auto-scan cache after payment completes
                         if (isAutoScan) {
                             synchronized (playerListLock) { tabScanPlayerList.clear(); }
                             isAutoScan = false;
@@ -809,7 +801,6 @@ public class PayManager {
                     minecraft.execute(() -> { 
                         synchronized (paymentLock) { isPaying = false; }
                         paymentProgress = 0.0f;
-                        // Clear auto-scan cache on cancel
                         if (isAutoScan) {
                             synchronized (playerListLock) { tabScanPlayerList.clear(); }
                             isAutoScan = false;
@@ -832,7 +823,6 @@ public class PayManager {
     }
 
     public void stopPaying() {
-        // Allow cancelling even if currently paused
         if ((isPaying || isPaused) && !shouldStop) {
             shouldStop = true;
             isPaused = false;

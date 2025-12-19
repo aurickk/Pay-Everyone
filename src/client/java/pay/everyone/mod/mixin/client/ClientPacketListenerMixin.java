@@ -13,10 +13,7 @@ import pay.everyone.mod.VersionCompat;
 import java.util.ArrayList;
 import java.util.List;
 
-/**
- * Mixin for handling command suggestion and screen packets.
- * Uses VersionCompat for cross-version compatibility (1.21.1-1.21.10).
- */
+/** Handles command suggestions and screen packets via VersionCompat. */
 @Mixin(ClientPacketListener.class)
 public class ClientPacketListenerMixin {
 

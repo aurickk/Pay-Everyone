@@ -9,7 +9,6 @@ public abstract class Widget {
     protected boolean focused = false;
     protected boolean hovered = false;
     
-    // Screen-space transform for scissor calculations
     protected int screenOffsetX = 0;
     protected int screenOffsetY = 0;
     protected float screenScale = 1.0f;

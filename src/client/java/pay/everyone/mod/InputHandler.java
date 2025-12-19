@@ -13,14 +13,12 @@ public class InputHandler {
     private static boolean initialized = false;
     private static long windowHandle = 0;
     
-    // Original callbacks to chain to
     private static GLFWMouseButtonCallback originalMouseButton;
     private static GLFWScrollCallback originalScroll;
     private static GLFWKeyCallback originalKey;
     private static GLFWCharCallback originalChar;
     private static GLFWCursorPosCallback originalCursorPos;
     
-    // Our custom callbacks
     private static GLFWMouseButtonCallback ourMouseButton;
     private static GLFWScrollCallback ourScroll;
     private static GLFWKeyCallback ourKey;
@@ -41,14 +39,12 @@ public class InputHandler {
                 return;
             }
             
-            // Save original callbacks
             originalMouseButton = GLFW.glfwSetMouseButtonCallback(windowHandle, null);
             originalScroll = GLFW.glfwSetScrollCallback(windowHandle, null);
             originalKey = GLFW.glfwSetKeyCallback(windowHandle, null);
             originalChar = GLFW.glfwSetCharCallback(windowHandle, null);
             originalCursorPos = GLFW.glfwSetCursorPosCallback(windowHandle, null);
             
-            // Create our callbacks
             ourMouseButton = GLFWMouseButtonCallback.create((window, button, action, mods) -> {
                 boolean handled = handleMouseButton(button, action, mods);
                 if (!handled && originalMouseButton != null) {
@@ -79,13 +75,11 @@ public class InputHandler {
             
             ourCursorPos = GLFWCursorPosCallback.create((window, xpos, ypos) -> {
                 boolean handled = handleCursorPos(xpos, ypos);
-                // Only pass to original if not capturing input (prevents camera movement)
                 if (!handled && originalCursorPos != null) {
                     originalCursorPos.invoke(window, xpos, ypos);
                 }
             });
             
-            // Set our callbacks
             GLFW.glfwSetMouseButtonCallback(windowHandle, ourMouseButton);
             GLFW.glfwSetScrollCallback(windowHandle, ourScroll);
             GLFW.glfwSetKeyCallback(windowHandle, ourKey);
@@ -126,7 +120,7 @@ public class InputHandler {
             lastButton = -1;
         }
         
-        return true; // Consume the event
+        return true;
     }
     
     private static boolean handleScroll(double xOffset, double yOffset) {
@@ -144,13 +138,10 @@ public class InputHandler {
     
     private static boolean handleKey(int key, int scancode, int action, int mods) {
         Minecraft mc = Minecraft.getInstance();
-        if (mc.screen != null) return false;
         
-        // Check for cancel keybind - should work even when GUI is capturing input
         if (action == GLFW.GLFW_PRESS) {
             try {
                 if (PayEveryoneClient.getCancelPaymentKey() != null) {
-                    // Use isDown() + getKey() comparison as matches() may not exist in all versions
                     if (matchesKey(PayEveryoneClient.getCancelPaymentKey(), key)) {
                         PayManager pm = PayManager.getInstance();
                         if (pm.isPaying() || pm.isTabScanning()) {
@@ -168,6 +159,8 @@ public class InputHandler {
             } catch (Throwable ignored) {}
         }
         
+        if (mc.screen != null) return false;
+        
         PayEveryoneHud hud = PayEveryoneHud.getInstance();
         if (!hud.shouldCaptureInput()) return false;
         
@@ -178,10 +171,6 @@ public class InputHandler {
         return true;
     }
     
-    /**
-     * Check if a KeyMapping matches the given key.
-     * Uses reflection to handle API differences across versions.
-     */
     private static boolean matchesKey(net.minecraft.client.KeyMapping keyMapping, int key) {
         try {
             // Try matches(int, int) first via reflection
@@ -237,7 +226,6 @@ public class InputHandler {
         PayEveryoneHud hud = PayEveryoneHud.getInstance();
         if (!hud.shouldCaptureInput()) return false;
         
-        // Handle drag
         if (lastButton >= 0) {
             double[] scaled = getScaledMousePos(xpos, ypos);
             double[] prevScaled = getScaledMousePos(prevX, prevY);
@@ -245,14 +233,13 @@ public class InputHandler {
                 scaled[0] - prevScaled[0], scaled[1] - prevScaled[1]);
         }
         
-        return true; // Consume cursor movement when GUI is active
+        return true;
     }
     
     public static void cleanup() {
         if (!initialized || windowHandle == 0) return;
         
         try {
-            // Restore original callbacks
             if (originalMouseButton != null) {
                 GLFW.glfwSetMouseButtonCallback(windowHandle, originalMouseButton);
             }
@@ -269,7 +256,6 @@ public class InputHandler {
                 GLFW.glfwSetCursorPosCallback(windowHandle, originalCursorPos);
             }
             
-            // Free our callbacks
             if (ourMouseButton != null) ourMouseButton.free();
             if (ourScroll != null) ourScroll.free();
             if (ourKey != null) ourKey.free();

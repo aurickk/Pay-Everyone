@@ -15,12 +15,10 @@ public class PayEveryoneWindow {
     private int width = 260;
     private int height = 340;
     
-    // Base dimensions for scaling - widgets are designed for this size
     private static final int BASE_WIDTH = 260;
     private static final int BASE_HEIGHT = 340;
     private static final float BASE_ASPECT_RATIO = (float) BASE_WIDTH / BASE_HEIGHT;
     
-    // Allow shrinking down significantly
     private static final int MIN_WIDTH = 100;
     private static final int MIN_HEIGHT = (int)(MIN_WIDTH / BASE_ASPECT_RATIO);
     private static final int RESIZE_HANDLE_SIZE = 12;
@@ -45,7 +43,6 @@ public class PayEveryoneWindow {
     
     private final PayManager payManager = PayManager.getInstance();
     
-    // Main tab widgets
     private TextFieldWidget amountField;
     private SliderWidget delaySlider;
     private CheckboxWidget autoModeCheckbox;
@@ -59,7 +56,6 @@ public class PayEveryoneWindow {
     private PlayerListWidget paymentLogList;
     private long errorDisplayUntil = 0;
     
-    // Settings tab widgets
     private TextFieldWidget commandField;
     private CheckboxWidget reverseSyntaxCheckbox;
     private CheckboxWidget doubleSendCheckbox;
@@ -68,7 +64,6 @@ public class PayEveryoneWindow {
     private TextFieldWidget confirmSlotField;
     private SliderWidget confirmDelaySlider;
     
-    // Players tab widgets
     private TextFieldWidget addPlayerField;
     private TextFieldWidget excludePlayerField;
     private PlayerListWidget manualList;
@@ -78,7 +73,6 @@ public class PayEveryoneWindow {
     private PlayerListWidget tablistView;
     private String playerSearchFilter = "";
     
-    // Scan tab widgets
     private SliderWidget scanIntervalSlider;
     private ButtonWidget startScanButton;
     private ButtonWidget clearScanListButton;
@@ -103,8 +97,21 @@ public class PayEveryoneWindow {
     
     public void resetPosition() {
         Minecraft mc = Minecraft.getInstance();
-        this.x = (mc.getWindow().getGuiScaledWidth() - width) / 2;
-        this.y = (mc.getWindow().getGuiScaledHeight() - height) / 2;
+        int screenW = mc.getWindow().getGuiScaledWidth();
+        int screenH = mc.getWindow().getGuiScaledHeight();
+        int invWidth = 176;
+        int invLeft = (screenW - invWidth) / 2;
+        this.x = Math.max(4, invLeft - width - 8);
+        this.y = (screenH - height) / 2;
+    }
+    
+    public boolean hasFocusedTextField() {
+        for (WidgetData wd : getActiveWidgets()) {
+            if (wd.widget instanceof TextFieldWidget && wd.widget.isFocused()) {
+                return true;
+            }
+        }
+        return false;
     }
     
     private void addWidget(List<WidgetData> list, Widget w, int relX, int relY) {
@@ -130,7 +137,6 @@ public class PayEveryoneWindow {
         amountField.setMaxLength(32);
         addWidget(mainTabWidgets, amountField, 8, cy + 12);
         
-        // Auto checkbox next to amount input
         autoModeCheckbox = new CheckboxWidget(0, 0, 45, "Auto", false, null);
         addWidget(mainTabWidgets, autoModeCheckbox, cw - 37, cy + 14);
         
@@ -167,7 +173,7 @@ public class PayEveryoneWindow {
         logLabel.setColor(Theme.TEXT_SECONDARY);
         addWidget(mainTabWidgets, logLabel, 8, cy + 176);
         
-        paymentLogList = new PlayerListWidget(0, 0, cw, 60, "");
+        paymentLogList = new PlayerListWidget(0, 0, cw, 80, "");
         paymentLogList.setPlayerProvider(payManager::getPaymentLogs);
         paymentLogList.setAutoScroll(true);
         paymentLogList.setShowCount(false);
@@ -193,7 +199,6 @@ public class PayEveryoneWindow {
             payManager.isReverseSyntaxEnabled(), payManager::setReverseSyntax);
         addWidget(settingsTabWidgets, reverseSyntaxCheckbox, 8, cy + 38);
         
-        // Auto Confirm section
         LabelWidget sep1 = new LabelWidget(0, 0, cw, "--- Auto Confirm ---");
         sep1.setColor(Theme.TEXT_SECONDARY);
         sep1.setCentered(true);
@@ -225,7 +230,6 @@ public class PayEveryoneWindow {
         confirmDelaySlider.setSuffix("ms");
         addWidget(settingsTabWidgets, confirmDelaySlider, 8, cy + 116);
         
-        // Double Send section
         LabelWidget sep2 = new LabelWidget(0, 0, cw, "--- Double Send ---");
         sep2.setColor(Theme.TEXT_SECONDARY);
         sep2.setCentered(true);
@@ -240,39 +244,37 @@ public class PayEveryoneWindow {
         doubleSendDelaySlider.setSuffix("ms");
         addWidget(settingsTabWidgets, doubleSendDelaySlider, 8, cy + 180);
 
-        // Keybinds section
         LabelWidget sep3 = new LabelWidget(0, 0, cw, "--- Keybinds ---");
         sep3.setColor(Theme.TEXT_SECONDARY);
         sep3.setCentered(true);
         addWidget(settingsTabWidgets, sep3, 8, cy + 212);
 
-        KeybindWidget toggleGuiKeybind = new KeybindWidget(0, 0, cw, 18, "Open GUI:",
-            PayEveryoneClient.getToggleGuiKey());
-        addWidget(settingsTabWidgets, toggleGuiKeybind, 8, cy + 226);
-
         KeybindWidget cancelKeybind = new KeybindWidget(0, 0, cw, 18, "Force Stop:",
             PayEveryoneClient.getCancelPaymentKey());
-        addWidget(settingsTabWidgets, cancelKeybind, 8, cy + 248);
+        addWidget(settingsTabWidgets, cancelKeybind, 8, cy + 226);
 
         ButtonWidget resetBtn = new ButtonWidget(0, 0, cw, 20, "Reset Settings", () -> {
             payManager.resetSettingsOnly();
+            payManager.clearScanLogs();
+            payManager.clearPaymentLogs();
+            payManager.clearManualPlayers();
+            payManager.clearExclusions();
             refreshSettings();
         });
-        addWidget(settingsTabWidgets, resetBtn, 8, cy + 268);
+        addWidget(settingsTabWidgets, resetBtn, 8, cy + 248);
     }
     
     private void initPlayersTab() {
         int cy = TITLE_BAR_HEIGHT + TAB_HEIGHT + 8;
         int cw = width - 16;
-        int halfWidth = (cw - 8) / 2;  // Half width with gap
+        int halfWidth = (cw - 8) / 2;
         
-        // === LEFT COLUMN: Add Players ===
         LabelWidget addLabel = new LabelWidget(0, 0, halfWidth, "Add Player:");
         addLabel.setColor(Theme.TEXT_PRIMARY);
         addWidget(playersTabWidgets, addLabel, 8, cy);
         
         addPlayerField = new TextFieldWidget(0, 0, halfWidth - 36, 18, "Username");
-        addPlayerField.setMaxLength(16);
+        addPlayerField.setMaxLength(64);
         addWidget(playersTabWidgets, addPlayerField, 8, cy + 12);
         
         ButtonWidget addBtn = new ButtonWidget(0, 0, 32, 18, "+", () -> {
@@ -284,13 +286,12 @@ public class PayEveryoneWindow {
         });
         addWidget(playersTabWidgets, addBtn, 8 + halfWidth - 32, cy + 12);
         
-        // === RIGHT COLUMN: Exclude Players ===
         LabelWidget excludeLabel = new LabelWidget(0, 0, halfWidth, "Exclude Player:");
         excludeLabel.setColor(Theme.TEXT_PRIMARY);
         addWidget(playersTabWidgets, excludeLabel, 8 + halfWidth + 8, cy);
         
         excludePlayerField = new TextFieldWidget(0, 0, halfWidth - 36, 18, "Username");
-        excludePlayerField.setMaxLength(16);
+        excludePlayerField.setMaxLength(64);
         excludePlayerField.setAutocompleteProvider(this::getTablistPlayerNames);
         addWidget(playersTabWidgets, excludePlayerField, 8 + halfWidth + 8, cy + 12);
         
@@ -303,7 +304,6 @@ public class PayEveryoneWindow {
         });
         addWidget(playersTabWidgets, excludeBtn, 8 + cw - 32, cy + 12);
         
-        // === LISTS ROW ===
         int listY = cy + 38;
         int listHeight = 60;
         
@@ -319,7 +319,6 @@ public class PayEveryoneWindow {
         excludeList.setShowCount(true);
         addWidget(playersTabWidgets, excludeList, 8 + halfWidth + 8, listY);
         
-        // === ONLINE PLAYERS SECTION ===
         int onlineY = listY + listHeight + 12;
         
         onlineLabel = new LabelWidget(0, 0, cw - 80, "Online Players:");
@@ -333,8 +332,7 @@ public class PayEveryoneWindow {
         });
         addWidget(playersTabWidgets, playerSearchField, 8 + cw - 76, onlineY - 2);
         
-        // Online player list - right-click to exclude
-        tablistView = new PlayerListWidget(0, 0, cw, 80, "");
+        tablistView = new PlayerListWidget(0, 0, cw, 160, "");
         tablistView.setPlayerProvider(this::getFilteredOnlinePlayers);
         tablistView.setShowCount(false);
         tablistView.setOnContextAction((player, action) -> {
@@ -361,11 +359,13 @@ public class PayEveryoneWindow {
         ButtonWidget cancelScanButton = new ButtonWidget(0, 0, btnW, 20, "Cancel", () -> {
             payManager.stopTabScan();
             payManager.clearTabScanList();
+            payManager.clearScanLogs();
         });
         addWidget(scanTabWidgets, cancelScanButton, 8 + btnW + 4, cy + 32);
         
         clearScanListButton = new ButtonWidget(0, 0, btnW, 20, "Clear List", () -> {
             payManager.clearTabScanList();
+            payManager.clearScanLogs();
         });
         addWidget(scanTabWidgets, clearScanListButton, 8 + (btnW + 4) * 2, cy + 32);
         
@@ -376,7 +376,7 @@ public class PayEveryoneWindow {
         scanLogLabel.setColor(Theme.TEXT_SECONDARY);
         addWidget(scanTabWidgets, scanLogLabel, 8, cy + 90);
         
-        scanLogList = new PlayerListWidget(0, 0, cw, 130, "");
+        scanLogList = new PlayerListWidget(0, 0, cw, 150, "");
         scanLogList.setPlayerProvider(payManager::getScanLogs);
         scanLogList.setAutoScroll(true);
         scanLogList.setShowCount(false);
@@ -384,9 +384,9 @@ public class PayEveryoneWindow {
     }
     
     private List<String> getTablistPlayerNames() {
-        List<String> tabScan = payManager.getPlayerListSample("tabscan", 1000);
+        List<String> tabScan = payManager.getPlayerListSample("tabscan", 100000);
         if (!tabScan.isEmpty()) return tabScan;
-        return payManager.getPlayerListSample("tablist", 1000);
+        return payManager.getPlayerListSample("tablist", 100000);
     }
     
     private List<String> getFilteredOnlinePlayers() {
@@ -398,7 +398,10 @@ public class PayEveryoneWindow {
         
         for (String p : source) {
             String lower = p.toLowerCase();
-            if (lower.startsWith(playerSearchFilter)) {
+            String searchableName = lower.startsWith(".") ? lower.substring(1) : lower;
+            String searchableFilter = playerSearchFilter.startsWith(".") ? playerSearchFilter.substring(1) : playerSearchFilter;
+            
+            if (lower.startsWith(playerSearchFilter) || searchableName.startsWith(searchableFilter)) {
                 startsWith.add(p);
             } else if (lower.contains(playerSearchFilter)) {
                 contains.add(p);
@@ -451,6 +454,9 @@ public class PayEveryoneWindow {
         autoConfirmCheckbox.setChecked(payManager.getConfirmClickSlot() >= 0);
         confirmSlotField.setText(String.valueOf(Math.max(0, payManager.getConfirmClickSlot())));
         confirmDelaySlider.setValue(payManager.getConfirmClickDelay());
+        amountField.setText("");
+        tabScanEnabledCheckbox.setChecked(payManager.isTabScanEnabled());
+        delaySlider.setValue(payManager.getPaymentDelay());
     }
     
     private List<WidgetData> getActiveWidgets() {
@@ -488,25 +494,19 @@ public class PayEveryoneWindow {
         Minecraft mc = Minecraft.getInstance();
         float scale = getScale();
         
-        // With matrix scaling, renderWidth/Height is the actual scaled size on screen
         int renderWidth = width;
         int renderHeight = height;
         
-        // Transform mouse coordinates to "base" space for widget interaction
-        // Mouse coords are in screen space, widgets are in base space (0..BASE_WIDTH, 0..BASE_HEIGHT)
         int scaledMouseX = (int)((mouseX - x) / scale);
         int scaledMouseY = (int)((mouseY - y) / scale);
         
-        // Draw window background
         RenderHelper.fill(graphics, x, y, x + renderWidth, y + renderHeight, Theme.BG_PRIMARY);
         
-        // Border
         RenderHelper.fill(graphics, x, y, x + renderWidth, y + 1, Theme.BORDER);
         RenderHelper.fill(graphics, x, y + renderHeight - 1, x + renderWidth, y + renderHeight, Theme.BORDER);
         RenderHelper.fill(graphics, x, y, x + 1, y + renderHeight, Theme.BORDER);
         RenderHelper.fill(graphics, x + renderWidth - 1, y, x + renderWidth, y + renderHeight, Theme.BORDER);
         
-        // Resize handle - draw the corner grip pattern
         int handleX = x + renderWidth - RESIZE_HANDLE_SIZE;
         int handleY = y + renderHeight - RESIZE_HANDLE_SIZE;
         RenderHelper.fill(graphics, handleX, handleY, x + renderWidth, y + renderHeight, Theme.BG_TERTIARY);
@@ -514,54 +514,34 @@ public class PayEveryoneWindow {
             int offset = i * 3;
             RenderHelper.fill(graphics, handleX + RESIZE_HANDLE_SIZE - 3 - offset, handleY + RESIZE_HANDLE_SIZE - 1, 
                          handleX + RESIZE_HANDLE_SIZE - 2 - offset, handleY + RESIZE_HANDLE_SIZE, Theme.TEXT_SECONDARY);
-            RenderHelper.fill(graphics, handleX + RESIZE_HANDLE_SIZE - 1, handleY + RESIZE_HANDLE_SIZE - 3 - offset,
+            RenderHelper.fill(graphics,                          handleX + RESIZE_HANDLE_SIZE - 1, handleY + RESIZE_HANDLE_SIZE - 3 - offset,
                          handleX + RESIZE_HANDLE_SIZE, handleY + RESIZE_HANDLE_SIZE - 2 - offset, Theme.TEXT_SECONDARY);
         }
         
-        // Apply matrix transform: translate to window position, then scale
-        // All widget rendering happens in "base" coordinate space (0..BASE_WIDTH, 0..BASE_HEIGHT)
         RenderHelper.pushPose(graphics);
         RenderHelper.translate(graphics, x, y, 0);
         RenderHelper.scale(graphics, scale, scale, 1.0f);
         
-        // With matrix transform active, all coordinates are relative to window origin
         int ox = 0;
         int oy = 0;
         
-        // Title bar
         RenderHelper.fill(graphics, ox + 1, oy + 1, ox + BASE_WIDTH - 1, oy + TITLE_BAR_HEIGHT, Theme.TITLE_BAR);
         String titleText = "Pay Everyone " + getModVersion();
         RenderHelper.drawString(graphics, mc.font, titleText, ox + 6, oy + 4, Theme.TITLE_BAR_TEXT, false);
         
-        // Close button (X)
-        int closeX = ox + BASE_WIDTH - 14;
-        int closeY = oy + 2;
-        boolean isScanning = payManager.isTabScanning();
-        int closeBg = isScanning ? Theme.BG_TERTIARY : (isMouseOverCloseScaled(scaledMouseX, scaledMouseY) ? Theme.BG_HOVER : Theme.BG_TERTIARY);
-        RenderHelper.fill(graphics, closeX, closeY, closeX + 12, closeY + 12, closeBg);
-        
-        int xColor = isScanning ? Theme.TEXT_DISABLED : Theme.TEXT_PRIMARY;
-        for (int i = 0; i < 6; i++) {
-            RenderHelper.fill(graphics, closeX + 3 + i, closeY + 3 + i, closeX + 4 + i, closeY + 4 + i, xColor);
-            RenderHelper.fill(graphics, closeX + 8 - i, closeY + 3 + i, closeX + 9 - i, closeY + 4 + i, xColor);
-        }
-        
-        // Pin button with "Pinned" label
-        int pinX = ox + BASE_WIDTH - 28;
+        int pinX = ox + BASE_WIDTH - 14;
         int pinY = oy + 2;
         int pinBg = isMouseOverPinScaled(scaledMouseX, scaledMouseY) ? Theme.BG_HOVER : Theme.BG_TERTIARY;
         RenderHelper.fill(graphics, pinX, pinY, pinX + 12, pinY + 12, pinBg);
         int dotColor = pinned ? Theme.PIN_ACTIVE : Theme.PIN_INACTIVE;
-        RenderHelper.fill(graphics, pinX + 4, pinY + 4, pinX + 8, pinY + 8, dotColor);
+        RenderHelper.fill(graphics, pinX + 3, pinY + 3, pinX + 9, pinY + 9, dotColor);
         
-        // Show "Pinned" text when pinned
         if (pinned) {
             String pinnedText = "Pinned";
             int pinnedWidth = mc.font.width(pinnedText);
             RenderHelper.drawString(graphics, mc.font, pinnedText, pinX - pinnedWidth - 4, oy + 4, Theme.WARNING, false);
         }
         
-        // Tabs
         int tabY = oy + TITLE_BAR_HEIGHT;
         int tabWidth = BASE_WIDTH / tabNames.length;
         for (int i = 0; i < tabNames.length; i++) {
@@ -573,36 +553,51 @@ public class PayEveryoneWindow {
             RenderHelper.drawString(graphics, mc.font, tabNames[i], textX, tabY + 5, textColor, false);
         }
         
-        // Content area background
         int contentY = oy + TITLE_BAR_HEIGHT + TAB_HEIGHT;
         RenderHelper.fill(graphics, ox + 1, contentY, ox + BASE_WIDTH - 1, oy + BASE_HEIGHT - 1, Theme.BG_SECONDARY);
         
-        // Render active tab widgets
-        // With matrix transform, widgets use relative positions in base coordinate space
         for (WidgetData wd : getActiveWidgets()) {
             wd.widget.setPosition(wd.relX, wd.relY);
             wd.widget.setScreenTransform(x, y, scale, true);
             wd.widget.render(graphics, scaledMouseX, scaledMouseY, delta);
         }
         
-        // Update status and progress
         updateStatusDisplay();
         
-        // Warning when scanning
-        if (isScanning) {
-            String warning = "DO NOT MOVE - Scanning players...";
+        boolean showingWarning = false;
+        if (payManager.isTabScanning()) {
+            String cancelKey = "J";
+            try {
+                if (PayEveryoneClient.getCancelPaymentKey() != null) {
+                    cancelKey = PayEveryoneClient.getCancelPaymentKey().getTranslatedKeyMessage().getString();
+                }
+            } catch (Exception ignored) {}
+            String warning = "Movement locked during Tabscan - [" + cancelKey + "] to Cancel";
+            int warningWidth = mc.font.width(warning);
+            int warningX = ox + (BASE_WIDTH - warningWidth) / 2;
+            int warningY = oy + BASE_HEIGHT - 14;
+            RenderHelper.drawString(graphics, mc.font, warning, warningX, warningY, 0xFFFF0000, false); // Red
+            showingWarning = true;
+        } else if (payManager.isPaying()) {
+            String cancelKey = "J";
+            try {
+                if (PayEveryoneClient.getCancelPaymentKey() != null) {
+                    cancelKey = PayEveryoneClient.getCancelPaymentKey().getTranslatedKeyMessage().getString();
+                }
+            } catch (Exception ignored) {}
+            String warning = "[" + cancelKey + "] to Cancel";
             int warningWidth = mc.font.width(warning);
             int warningX = ox + (BASE_WIDTH - warningWidth) / 2;
             int warningY = oy + BASE_HEIGHT - 14;
             RenderHelper.drawString(graphics, mc.font, warning, warningX, warningY, Theme.WARNING, false);
+            showingWarning = true;
         }
         
-        // Watermark
-        String watermark = "Made by Aurick";
-        int wmWidth = mc.font.width(watermark);
-        RenderHelper.drawString(graphics, mc.font, watermark, ox + BASE_WIDTH - wmWidth - 4, oy + BASE_HEIGHT - 12, 0x44AAAAAA, false);
+        if (!showingWarning) {
+            String watermark = "Made by Aurick";
+            RenderHelper.drawString(graphics, mc.font, watermark, ox + 4, oy + BASE_HEIGHT - 12, 0x44AAAAAA, false);
+        }
         
-        // Render overlays on top of everything (autocomplete suggestions, context menus)
         for (WidgetData wd : getActiveWidgets()) {
             if (wd.widget instanceof TextFieldWidget) {
                 ((TextFieldWidget) wd.widget).renderSuggestionsOverlay(graphics, scaledMouseX, scaledMouseY);
@@ -615,15 +610,8 @@ public class PayEveryoneWindow {
         RenderHelper.popPose(graphics);
     }
     
-    // Scaled versions of hit detection for use inside the scaled render
-    private boolean isMouseOverCloseScaled(int scaledMouseX, int scaledMouseY) {
-        int closeX = BASE_WIDTH - 14;
-        int closeY = 2;
-        return scaledMouseX >= closeX && scaledMouseX < closeX + 12 && scaledMouseY >= closeY && scaledMouseY < closeY + 12;
-    }
-    
     private boolean isMouseOverPinScaled(int scaledMouseX, int scaledMouseY) {
-        int pinX = BASE_WIDTH - 28;
+        int pinX = BASE_WIDTH - 14;
         int pinY = 2;
         return scaledMouseX >= pinX && scaledMouseX < pinX + 12 && scaledMouseY >= pinY && scaledMouseY < pinY + 12;
     }
@@ -650,7 +638,6 @@ public class PayEveryoneWindow {
             statusLabel.setColor(Theme.TEXT_SECONDARY);
         }
         
-        // Progress bars (setLabel only sets base label, widget adds percentage)
         if (payManager.isTabScanning()) {
             float scanProg = payManager.getScanProgress();
             progressBar.setProgress(scanProg);
@@ -661,12 +648,15 @@ public class PayEveryoneWindow {
             float payProg = payManager.getPaymentProgress();
             progressBar.setProgress(payProg);
             progressBar.setLabel("Progress");
+            scanProgressBar.setProgress(0);
+            scanProgressBar.setLabel("Scan");
         } else {
             progressBar.setProgress(0);
             progressBar.setLabel("Progress");
+            scanProgressBar.setProgress(0);
+            scanProgressBar.setLabel("Scan");
         }
         
-        // Update player count - use getOnlinePlayers which is the actual payment list
         List<String> onlinePlayers = payManager.getOnlinePlayers();
         List<String> tabScanList = payManager.getPlayerListSample("tabscan", 10000);
         List<String> manualList = payManager.getPlayerListSample("manual", 10000);
@@ -681,10 +671,8 @@ public class PayEveryoneWindow {
         }
         infoLabel.setText("Players (" + source + "): " + onlinePlayers.size());
         
-        // Update online label in Players tab
         onlineLabel.setText("Online (" + source + "): " + onlinePlayers.size());
         
-        // Button states
         boolean isRunning = payManager.isPaying() || payManager.isTabScanning();
         startButton.setEnabled(!isRunning);
         pauseButton.setEnabled(isRunning);
@@ -726,7 +714,6 @@ public class PayEveryoneWindow {
         double scaledX = toScaledX(mouseX);
         double scaledY = toScaledY(mouseY);
         
-        // Handle any open context menus first (from PlayerListWidgets)
         for (WidgetData wd : getActiveWidgets()) {
             if (wd.widget instanceof PlayerListWidget) {
                 PlayerListWidget plw = (PlayerListWidget) wd.widget;
@@ -737,7 +724,6 @@ public class PayEveryoneWindow {
             }
         }
         
-        // Check resize handle first (in screen space)
         if (button == 0 && isMouseOverResize(mouseX, mouseY)) {
             resizing = true;
             resizeStartMouseX = (int) mouseX;
@@ -747,35 +733,17 @@ public class PayEveryoneWindow {
             return true;
         }
         
-        // Check if within window bounds
         if (!isMouseOver(mouseX, mouseY)) {
-            // Click outside - if pinned, unfocus the window
-            if (pinned && visible) {
-                visible = false;
-            }
             return false;
         }
         
-        // Close button (in scaled space) - also unpins when clicked
-        int closeX = BASE_WIDTH - 14;
-        int closeY = 2;
-        if (scaledX >= closeX && scaledX < closeX + 12 && scaledY >= closeY && scaledY < closeY + 12) {
-            if (!payManager.isTabScanning()) {
-                visible = false;
-                pinned = false; // Also disable pin when closing
-            }
-            return true;
-        }
-        
-        // Pin button (in scaled space)
-        int pinX = BASE_WIDTH - 28;
+        int pinX = BASE_WIDTH - 14;
         int pinY = 2;
         if (scaledX >= pinX && scaledX < pinX + 12 && scaledY >= pinY && scaledY < pinY + 12) {
             pinned = !pinned;
             return true;
         }
         
-        // Title bar drag (in scaled space)
         if (button == 0 && scaledY >= 0 && scaledY < TITLE_BAR_HEIGHT) {
             dragging = true;
             dragOffsetX = (int) mouseX - x;
@@ -783,7 +751,6 @@ public class PayEveryoneWindow {
             return true;
         }
         
-        // Tab clicks (in scaled space)
         if (scaledY >= TITLE_BAR_HEIGHT && scaledY < TITLE_BAR_HEIGHT + TAB_HEIGHT) {
             int tabWidth = BASE_WIDTH / tabNames.length;
             int clickedTab = (int)(scaledX / tabWidth);
@@ -794,7 +761,6 @@ public class PayEveryoneWindow {
             }
         }
         
-        // Widget clicks - use scaled (base space) coordinates
         for (WidgetData wd : getActiveWidgets()) {
             if (wd.widget.mouseClicked(scaledX, scaledY, button)) {
                 clearFocusExcept(wd.widget);
@@ -836,11 +802,9 @@ public class PayEveryoneWindow {
             int screenWidth = mc.getWindow().getGuiScaledWidth();
             int screenHeight = mc.getWindow().getGuiScaledHeight();
             
-            // Calculate new size based on mouse drag, maintaining aspect ratio
             int deltaXInt = (int)(mouseX - resizeStartMouseX);
             int deltaYInt = (int)(mouseY - resizeStartMouseY);
             
-            // Use the larger delta to determine scale, maintaining aspect ratio
             int newWidth, newHeight;
             if (Math.abs(deltaXInt) > Math.abs(deltaYInt)) {
                 newWidth = resizeStartWidth + deltaXInt;
@@ -850,7 +814,6 @@ public class PayEveryoneWindow {
                 newWidth = (int)(newHeight * BASE_ASPECT_RATIO);
             }
             
-            // Clamp to min/max while maintaining aspect ratio
             if (newWidth < MIN_WIDTH) {
                 newWidth = MIN_WIDTH;
                 newHeight = (int)(newWidth / BASE_ASPECT_RATIO);
@@ -883,7 +846,6 @@ public class PayEveryoneWindow {
             return true;
         }
         
-        // Use scaled (base space) coordinates for widget interaction
         double widgetMouseX = toScaledX(mouseX);
         double widgetMouseY = toScaledY(mouseY);
         float scale = getScale();
@@ -900,7 +862,6 @@ public class PayEveryoneWindow {
     public boolean mouseScrolled(double mouseX, double mouseY, double amount) {
         if (!visible || !isMouseOver(mouseX, mouseY)) return false;
         
-        // Use scaled (base space) coordinates for widget interaction
         double widgetMouseX = toScaledX(mouseX);
         double widgetMouseY = toScaledY(mouseY);
         
@@ -912,8 +873,6 @@ public class PayEveryoneWindow {
         
         return false;
     }
-    
-    // ================== KEYBOARD INPUT ==================
     
     public boolean keyPressed(int keyCode, int scanCode, int modifiers) {
         for (WidgetData wd : getActiveWidgets()) {
@@ -933,14 +892,11 @@ public class PayEveryoneWindow {
         return false;
     }
     
-    // ================== TICK ==================
-    
     public void tick() {
         Minecraft mc = Minecraft.getInstance();
         int screenWidth = mc.getWindow().getGuiScaledWidth();
         int screenHeight = mc.getWindow().getGuiScaledHeight();
         
-        // Constrain GUI size to screen bounds while maintaining aspect ratio
         if (width > screenWidth) {
             width = screenWidth;
             height = (int)(width / BASE_ASPECT_RATIO);
@@ -950,13 +906,11 @@ public class PayEveryoneWindow {
             width = (int)(height * BASE_ASPECT_RATIO);
         }
         
-        // Enforce minimum size
         if (width < MIN_WIDTH) {
             width = MIN_WIDTH;
             height = (int)(width / BASE_ASPECT_RATIO);
         }
         
-        // Keep GUI within bounds using rendered dimensions
         int renderW = getRenderedWidth();
         int renderH = getRenderedHeight();
         if (x < 0) x = 0;
@@ -964,13 +918,10 @@ public class PayEveryoneWindow {
         if (x + renderW > screenWidth) x = Math.max(0, screenWidth - renderW);
         if (y + renderH > screenHeight) y = Math.max(0, screenHeight - renderH);
         
-        // Tick widgets
         for (WidgetData wd : getActiveWidgets()) {
             wd.widget.tick();
         }
     }
-    
-    // ================== FOCUS MANAGEMENT ==================
     
     private void clearFocus() {
         for (WidgetData wd : mainTabWidgets) wd.widget.setFocused(false);
@@ -994,13 +945,10 @@ public class PayEveryoneWindow {
         }
     }
     
-    // ================== VISIBILITY ==================
-    
     private boolean hasBeenPositioned = false;
     
     public boolean isVisible() { return visible; }
     public void setVisible(boolean visible) { 
-        // Center window when first shown
         if (visible && !this.visible && !hasBeenPositioned) {
             Minecraft mc = Minecraft.getInstance();
             if (mc.getWindow() != null) {
@@ -1013,6 +961,10 @@ public class PayEveryoneWindow {
     }
     public boolean isPinned() { return pinned; }
     public void setPinned(boolean pinned) { this.pinned = pinned; }
+    
+    public int getWidth() { return width; }
+    public int getHeight() { return height; }
+    public void setPosition(int x, int y) { this.x = x; this.y = y; }
     
     public boolean isMouseOver(double mouseX, double mouseY) {
         int renderW = getRenderedWidth();

@@ -3,7 +3,8 @@
 	"package": "pay.everyone.mod.mixin.client",
 	"compatibilityLevel": "JAVA_21",
 	"client": [
-		"ClientPacketListenerMixin"
+		"ClientPacketListenerMixin",
+		"InventoryScreenMixin"
 	],
 	"injectors": {
 		"defaultRequire": 0

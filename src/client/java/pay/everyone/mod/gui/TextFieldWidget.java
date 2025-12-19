@@ -57,8 +57,6 @@ public class TextFieldWidget extends Widget {
             int cursorX = textX + font.width(beforeCursor);
             RenderHelper.fill(graphics, cursorX, textY - 1, cursorX + 1, textY + 9, Theme.TEXT_PRIMARY);
         }
-        
-        // Suggestions are rendered separately via renderSuggestionsOverlay to ensure they appear on top
     }
     
     private String getVisibleText(net.minecraft.client.gui.Font font, String fullText) {
@@ -76,10 +74,7 @@ public class TextFieldWidget extends Widget {
         int sugY = y + height;
         int maxVisible = Math.min(suggestions.size(), 5);
         int sugHeight = maxVisible * 12 + 4;
-        
-        // Note: Suggestions are rendered last in the widget order, so they should naturally
-        // be on top. The parent PayEveryoneWindow renders widgets in order and text fields with
-        // suggestions will have their suggestions drawn after other widgets.
+        int maxTextWidth = width - 8;
         
         RenderHelper.fill(graphics, x, sugY, x + width, sugY + sugHeight, Theme.BG_PRIMARY);
         RenderHelper.fill(graphics, x, sugY, x + width, sugY + 1, Theme.BORDER);
@@ -96,8 +91,20 @@ public class TextFieldWidget extends Widget {
                 RenderHelper.fill(graphics, x + 1, itemY, x + width - 1, itemY + 12, Theme.BG_HOVER);
             }
             
-            RenderHelper.drawString(graphics, font, suggestions.get(i), x + 4, itemY + 2, Theme.TEXT_PRIMARY, false);
+            String displayName = truncateToFit(font, suggestions.get(i), maxTextWidth);
+            RenderHelper.drawString(graphics, font, displayName, x + 4, itemY + 2, Theme.TEXT_PRIMARY, false);
         }
+    }
+    
+    private String truncateToFit(net.minecraft.client.gui.Font font, String text, int maxWidth) {
+        if (font.width(text) <= maxWidth) return text;
+        String ellipsis = "...";
+        int ellipsisWidth = font.width(ellipsis);
+        String truncated = text;
+        while (truncated.length() > 1 && font.width(truncated) + ellipsisWidth > maxWidth) {
+            truncated = truncated.substring(0, truncated.length() - 1);
+        }
+        return truncated + ellipsis;
     }
     
     public boolean hasSuggestions() {
@@ -226,12 +233,25 @@ public class TextFieldWidget extends Widget {
             List<String> all = autocompleteProvider.get();
             String lower = text.toLowerCase();
             suggestions.clear();
+            
             for (String s : all) {
-                if (s.toLowerCase().startsWith(lower) && !s.equalsIgnoreCase(text)) {
+                if (suggestions.size() >= 5) break;
+                String sLower = s.toLowerCase();
+                if (sLower.startsWith(lower) && !sLower.equals(lower)) {
                     suggestions.add(s);
-                    if (suggestions.size() >= 5) break;
                 }
             }
+            
+            if (suggestions.size() < 5) {
+                for (String s : all) {
+                    if (suggestions.size() >= 5) break;
+                    String sLower = s.toLowerCase();
+                    if (!sLower.startsWith(lower) && sLower.contains(lower) && !suggestions.contains(s)) {
+                        suggestions.add(s);
+                    }
+                }
+            }
+            
             showSuggestions = !suggestions.isEmpty();
             selectedSuggestion = showSuggestions ? 0 : -1;
         } else {

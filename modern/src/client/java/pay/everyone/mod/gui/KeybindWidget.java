@@ -6,10 +6,6 @@ import net.minecraft.client.Minecraft;
 import net.minecraft.client.gui.GuiGraphics;
 import pay.everyone.mod.compat.RenderHelper;
 
-/**
- * A widget for configuring keybinds directly in the GUI.
- * Modern version (1.21.6-1.21.10) - uses native APIs without reflection.
- */
 public class KeybindWidget extends Widget {
     private static final int LABEL_WIDTH = 80;
 
@@ -31,14 +27,11 @@ public class KeybindWidget extends Widget {
         
         var font = Minecraft.getInstance().font;
         
-        // Draw label on the left
         RenderHelper.drawString(graphics, font, label, x, y + (height - 8) / 2, Theme.TEXT_PRIMARY, false);
         
-        // Calculate button area (right side) using fixed label width
         int btnX = x + LABEL_WIDTH;
         int btnWidth = width - LABEL_WIDTH;
         
-        // Draw button background
         boolean btnHovered = mouseX >= btnX && mouseX < btnX + btnWidth && mouseY >= y && mouseY < y + height;
         int bgColor;
         if (listening) {
@@ -55,7 +48,6 @@ public class KeybindWidget extends Widget {
         RenderHelper.fill(graphics, btnX, y, btnX + 1, y + height, Theme.BORDER);
         RenderHelper.fill(graphics, btnX + btnWidth - 1, y, btnX + btnWidth, y + height, Theme.BORDER);
         
-        // Draw key name or "Press a key..."
         String keyText;
         int textColor;
         if (listening) {
@@ -112,10 +104,10 @@ public class KeybindWidget extends Widget {
             return true;
         }
         
-        // Modern API: Use Type.KEYSYM.getOrCreate() directly
         InputConstants.Key key = InputConstants.Type.KEYSYM.getOrCreate(keyCode);
         keyMapping.setKey(key);
         KeyMapping.resetMapping();
+        Minecraft.getInstance().options.save();
         
         stopListening();
         return true;

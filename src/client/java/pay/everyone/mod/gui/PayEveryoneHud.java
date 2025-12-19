@@ -13,6 +13,8 @@ public class PayEveryoneHud {
     private float savedYRot = 0, savedXRot = 0;
     private double savedMouseX = 0, savedMouseY = 0;
     private boolean needsCameraRestore = false;
+    private boolean inventoryMode = false;
+    private boolean manuallyHidden = false;
     
     private PayEveryoneHud() {
         window = new PayEveryoneWindow();
@@ -37,60 +39,122 @@ public class PayEveryoneHud {
         Minecraft mc = Minecraft.getInstance();
         if (mc.player == null) return;
         
-        // Render when visible or pinned - push z position to render above other HUD elements
-        if (window.isVisible() || window.isPinned()) {
+        if (inventoryMode) return;
+        
+        if (window.isPinned()) {
             int scaledWidth = mc.getWindow().getGuiScaledWidth();
             int scaledHeight = mc.getWindow().getGuiScaledHeight();
             int windowWidth = mc.getWindow().getWidth();
             int windowHeight = mc.getWindow().getHeight();
             
-            // Get mouse position directly from GLFW for accurate tracking
-            // mc.mouseHandler can return stale values when cursor mode changes
             double[] xpos = new double[1];
             double[] ypos = new double[1];
             GLFW.glfwGetCursorPos(GLFW.glfwGetCurrentContext(), xpos, ypos);
             int mouseX = (int)(xpos[0] * scaledWidth / windowWidth);
             int mouseY = (int)(ypos[0] * scaledHeight / windowHeight);
             
-            // Push to extremely high z-level to render above ALL HUD elements including chat, items, scoreboard
             RenderHelper.pushPose(graphics);
             RenderHelper.translate(graphics, 0, 0, 10000);
             window.render(graphics, mouseX, mouseY, tickDelta);
             RenderHelper.popPose(graphics);
         }
-        
-        // Handle cursor mode for input capture
-        boolean shouldCapture = shouldCaptureInput();
-        if (shouldCapture != inputCaptured) {
-            long windowHandle = GLFW.glfwGetCurrentContext();
-            
-            if (shouldCapture && !inputCaptured) {
-                // Entering GUI mode - save player camera angles, mouse position, and enable cursor
-                if (mc.player != null) {
-                    savedYRot = mc.player.getYRot();
-                    savedXRot = mc.player.getXRot();
-                }
-                savedMouseX = mc.mouseHandler.xpos();
-                savedMouseY = mc.mouseHandler.ypos();
-                GLFW.glfwSetInputMode(windowHandle, GLFW.GLFW_CURSOR, GLFW.GLFW_CURSOR_NORMAL);
-                needsCameraRestore = true;
-                
-                // Release all held keys to stop movement when GUI opens
-                releaseAllKeys(mc);
-            } else if (!shouldCapture && inputCaptured) {
-                // Exiting GUI mode - restore camera angles and mouse position to prevent camera snap
-                if (needsCameraRestore && mc.screen == null && mc.player != null) {
-                    mc.player.setYRot(savedYRot);
-                    mc.player.setXRot(savedXRot);
-                }
-                // Restore mouse position to prevent camera snap
-                GLFW.glfwSetCursorPos(windowHandle, savedMouseX, savedMouseY);
-                GLFW.glfwSetInputMode(windowHandle, GLFW.GLFW_CURSOR, GLFW.GLFW_CURSOR_DISABLED);
-                needsCameraRestore = false;
+    }
+    
+    private boolean hasBeenPositioned = false;
+    
+    public void setInventoryMode(boolean active) {
+        this.inventoryMode = active;
+        if (active) {
+            if (!manuallyHidden) {
+                window.setVisible(true);
             }
-            
-            inputCaptured = shouldCapture;
+        } else {
+            if (!window.isPinned()) {
+                window.setVisible(false);
+            }
         }
+    }
+    
+    public void setManuallyHidden(boolean hidden) {
+        this.manuallyHidden = hidden;
+        if (hidden) {
+            window.setVisible(false);
+        } else if (inventoryMode) {
+            window.setVisible(true);
+        }
+    }
+    
+    public boolean isInventoryMode() {
+        return inventoryMode;
+    }
+    
+    public void positionForInventory(int screenWidth, int screenHeight) {
+        if (hasBeenPositioned) return;
+        int invWidth = 176;
+        int invLeft = (screenWidth - invWidth) / 2;
+        int windowWidth = window.getWidth();
+        int windowHeight = window.getHeight();
+        int newX = Math.max(4, invLeft - windowWidth - 8);
+        int newY = (screenHeight - windowHeight) / 2;
+        window.setPosition(newX, newY);
+        hasBeenPositioned = true;
+    }
+    
+    public void renderInScreen(GuiGraphics graphics, int mouseX, int mouseY, float delta) {
+        if (manuallyHidden) return;
+        if (!inventoryMode && !window.isPinned()) return;
+        RenderHelper.pushPose(graphics);
+        RenderHelper.translate(graphics, 0, 0, 500);
+        window.render(graphics, mouseX, mouseY, delta);
+        RenderHelper.popPose(graphics);
+    }
+    
+    public boolean handleInventoryClick(double mouseX, double mouseY, int button) {
+        if (manuallyHidden) return false;
+        if (!inventoryMode && !window.isPinned()) return false;
+        if (window.isMouseOver(mouseX, mouseY)) {
+            return window.mouseClicked(mouseX, mouseY, button);
+        }
+        return false;
+    }
+    
+    public boolean handleInventoryRelease(double mouseX, double mouseY, int button) {
+        if (manuallyHidden) return false;
+        if (!inventoryMode && !window.isPinned()) return false;
+        return window.mouseReleased(mouseX, mouseY, button);
+    }
+    
+    public boolean handleInventoryDrag(double mouseX, double mouseY, int button, double deltaX, double deltaY) {
+        if (manuallyHidden) return false;
+        if (!inventoryMode && !window.isPinned()) return false;
+        return window.mouseDragged(mouseX, mouseY, button, deltaX, deltaY);
+    }
+    
+    public boolean handleInventoryScroll(double mouseX, double mouseY, double amount) {
+        if (manuallyHidden) return false;
+        if (!inventoryMode && !window.isPinned()) return false;
+        if (window.isMouseOver(mouseX, mouseY)) {
+            return window.mouseScrolled(mouseX, mouseY, amount);
+        }
+        return false;
+    }
+    
+    public boolean handleInventoryChar(char chr, int modifiers) {
+        if (manuallyHidden) return false;
+        if (!inventoryMode && !window.isPinned()) return false;
+        if (window.hasFocusedTextField()) {
+            return window.charTyped(chr, modifiers);
+        }
+        return false;
+    }
+    
+    public boolean handleInventoryKey(int keyCode, int scanCode, int modifiers) {
+        if (manuallyHidden) return false;
+        if (!inventoryMode && !window.isPinned()) return false;
+        if (window.hasFocusedTextField()) {
+            return window.keyPressed(keyCode, scanCode, modifiers);
+        }
+        return false;
     }
     
     public void tick() {
@@ -112,8 +176,7 @@ public class PayEveryoneHud {
     }
     
     public boolean shouldCaptureInput() {
-        // Capture input when visible (focused), regardless of pin state
-        return window.isVisible();
+        return window.isVisible() && inventoryMode;
     }
     
     public boolean handleMouseClicked(double mouseX, double mouseY, int button) {
@@ -133,7 +196,6 @@ public class PayEveryoneHud {
     }
     
     public boolean handleKeyPressed(int keyCode, int scanCode, int modifiers) {
-        // ESC closes the window, unless a TabScan is running
         if (keyCode == GLFW.GLFW_KEY_ESCAPE && window.isVisible()) {
             if (!pay.everyone.mod.PayManager.getInstance().isTabScanning()) {
                 window.setVisible(false);
@@ -152,18 +214,14 @@ public class PayEveryoneHud {
     }
     
     private void releaseAllKeys(Minecraft mc) {
-        // Release all movement and action keys to prevent stuck movement when opening GUI
         try {
             KeyMapping.releaseAll();
         } catch (Exception ignored) {
-            // Fallback: manually release common movement keys
             try {
                 for (KeyMapping key : mc.options.keyMappings) {
                     key.setDown(false);
                 }
-            } catch (Exception e2) {
-                // If that also fails, just ignore - the key release is a nice-to-have
-            }
+            } catch (Exception e2) {}
         }
     }
 }

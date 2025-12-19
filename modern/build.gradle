@@ -64,6 +64,7 @@ task copySharedClientSources(type: Copy) {
     exclude '**/compat/RenderHelper.java'
     exclude '**/InputHandler.java'
     exclude '**/gui/KeybindWidget.java'
+    exclude '**/mixin/client/InventoryScreenMixin.java'
 }
 
 compileClientJava.dependsOn copySharedClientSources

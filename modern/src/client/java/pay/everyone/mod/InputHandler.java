@@ -25,7 +25,6 @@ public class InputHandler {
     private static GLFWCharCallback originalChar;
     private static GLFWCursorPosCallback originalCursorPos;
     
-    // Our custom callbacks
     private static GLFWMouseButtonCallback ourMouseButton;
     private static GLFWScrollCallback ourScroll;
     private static GLFWKeyCallback ourKey;
@@ -46,14 +45,12 @@ public class InputHandler {
                 return;
             }
             
-            // Save original callbacks
             originalMouseButton = GLFW.glfwSetMouseButtonCallback(windowHandle, null);
             originalScroll = GLFW.glfwSetScrollCallback(windowHandle, null);
             originalKey = GLFW.glfwSetKeyCallback(windowHandle, null);
             originalChar = GLFW.glfwSetCharCallback(windowHandle, null);
             originalCursorPos = GLFW.glfwSetCursorPosCallback(windowHandle, null);
             
-            // Create our callbacks
             ourMouseButton = GLFWMouseButtonCallback.create((window, button, action, mods) -> {
                 boolean handled = handleMouseButton(button, action, mods);
                 if (!handled && originalMouseButton != null) {
@@ -89,7 +86,6 @@ public class InputHandler {
                 }
             });
             
-            // Set our callbacks
             GLFW.glfwSetMouseButtonCallback(windowHandle, ourMouseButton);
             GLFW.glfwSetScrollCallback(windowHandle, ourScroll);
             GLFW.glfwSetKeyCallback(windowHandle, ourKey);
@@ -115,12 +111,27 @@ public class InputHandler {
     
     private static boolean handleMouseButton(int button, int action, int mods) {
         Minecraft mc = Minecraft.getInstance();
-        if (mc.screen != null) return false;
-        
         PayEveryoneHud hud = PayEveryoneHud.getInstance();
-        if (!hud.shouldCaptureInput()) return false;
-        
         double[] scaled = getScaledMousePos(lastMouseX, lastMouseY);
+        
+        if (mc.screen != null && hud.isInventoryMode()) {
+            if (action == GLFW.GLFW_PRESS) {
+                lastButton = button;
+                if (hud.handleInventoryClick(scaled[0], scaled[1], button)) {
+                    return true;
+                }
+            } else if (action == GLFW.GLFW_RELEASE) {
+                if (hud.handleInventoryRelease(scaled[0], scaled[1], button)) {
+                    lastButton = -1;
+                    return true;
+                }
+                lastButton = -1;
+            }
+            return false;
+        }
+        
+        if (mc.screen != null) return false;
+        if (!hud.shouldCaptureInput()) return false;
         
         if (action == GLFW.GLFW_PRESS) {
             lastButton = button;
@@ -135,22 +146,27 @@ public class InputHandler {
     
     private static boolean handleScroll(double xOffset, double yOffset) {
         Minecraft mc = Minecraft.getInstance();
-        if (mc.screen != null) return false;
-        
         PayEveryoneHud hud = PayEveryoneHud.getInstance();
+        double[] scaled = getScaledMousePos(lastMouseX, lastMouseY);
+        
+        if (mc.screen != null && hud.isInventoryMode()) {
+            if (hud.handleInventoryScroll(scaled[0], scaled[1], yOffset)) {
+                return true;
+            }
+            return false;
+        }
+        
+        if (mc.screen != null) return false;
         if (!hud.shouldCaptureInput()) return false;
         
-        double[] scaled = getScaledMousePos(lastMouseX, lastMouseY);
         hud.handleMouseScrolled(scaled[0], scaled[1], yOffset);
-        
         return true;
     }
     
     private static boolean handleKey(int key, int scancode, int action, int mods) {
         Minecraft mc = Minecraft.getInstance();
-        if (mc.screen != null) return false;
+        PayEveryoneHud hud = PayEveryoneHud.getInstance();
         
-        // Check for cancel keybind
         if (action == GLFW.GLFW_PRESS) {
             try {
                 KeyMapping cancelKey = PayEveryoneClient.getCancelPaymentKey();
@@ -170,7 +186,19 @@ public class InputHandler {
             } catch (Throwable ignored) {}
         }
         
-        PayEveryoneHud hud = PayEveryoneHud.getInstance();
+        if (mc.screen != null && hud.isInventoryMode()) {
+            if (key == GLFW.GLFW_KEY_ESCAPE && PayManager.getInstance().isTabScanning()) {
+                return true;
+            }
+            if (action == GLFW.GLFW_PRESS || action == GLFW.GLFW_REPEAT) {
+                if (hud.handleInventoryKey(key, scancode, mods)) {
+                    return true;
+                }
+            }
+            return false;
+        }
+        
+        if (mc.screen != null) return false;
         if (!hud.shouldCaptureInput()) return false;
         
         if (action == GLFW.GLFW_PRESS || action == GLFW.GLFW_REPEAT) {
@@ -180,18 +208,12 @@ public class InputHandler {
         return true;
     }
     
-    /**
-     * Check if a KeyMapping matches the given key.
-     * Uses reflection to handle API differences across versions.
-     */
     private static boolean matchesKey(KeyMapping keyMapping, int key, int scancode) {
         try {
-            // Try matches(int, int) method first
             java.lang.reflect.Method matchesMethod = keyMapping.getClass().getMethod("matches", int.class, int.class);
             return (Boolean) matchesMethod.invoke(keyMapping, key, scancode);
         } catch (Throwable t1) {
             try {
-                // Try getKey() method
                 java.lang.reflect.Method getKeyMethod = keyMapping.getClass().getMethod("getKey");
                 Object boundKey = getKeyMethod.invoke(keyMapping);
                 if (boundKey != null) {
@@ -201,7 +223,6 @@ public class InputHandler {
                 }
             } catch (Throwable t2) {
                 try {
-                    // Try key field directly
                     java.lang.reflect.Field keyField = keyMapping.getClass().getDeclaredField("key");
                     keyField.setAccessible(true);
                     Object boundKey = keyField.get(keyMapping);
@@ -210,9 +231,7 @@ public class InputHandler {
                         int keyValue = (Integer) getValueMethod.invoke(boundKey);
                         return keyValue == key;
                     }
-                } catch (Throwable t3) {
-                    // All methods failed
-                }
+                } catch (Throwable t3) {}
             }
         }
         return false;
@@ -220,9 +239,16 @@ public class InputHandler {
     
     private static boolean handleChar(int codepoint) {
         Minecraft mc = Minecraft.getInstance();
-        if (mc.screen != null) return false;
-        
         PayEveryoneHud hud = PayEveryoneHud.getInstance();
+        
+        if (mc.screen != null && hud.isInventoryMode()) {
+            if (hud.handleInventoryChar((char) codepoint, 0)) {
+                return true;
+            }
+            return false;
+        }
+        
+        if (mc.screen != null) return false;
         if (!hud.shouldCaptureInput()) return false;
         
         hud.handleCharTyped((char) codepoint, 0);
@@ -236,12 +262,23 @@ public class InputHandler {
         lastMouseY = ypos;
         
         Minecraft mc = Minecraft.getInstance();
-        if (mc.screen != null) return false;
-        
         PayEveryoneHud hud = PayEveryoneHud.getInstance();
+        
+        if (mc.screen != null && hud.isInventoryMode()) {
+            if (lastButton >= 0) {
+                double[] scaled = getScaledMousePos(xpos, ypos);
+                double[] prevScaled = getScaledMousePos(prevX, prevY);
+                if (hud.handleInventoryDrag(scaled[0], scaled[1], lastButton,
+                        scaled[0] - prevScaled[0], scaled[1] - prevScaled[1])) {
+                    return true;
+                }
+            }
+            return false;
+        }
+        
+        if (mc.screen != null) return false;
         if (!hud.shouldCaptureInput()) return false;
         
-        // Handle drag
         if (lastButton >= 0) {
             double[] scaled = getScaledMousePos(xpos, ypos);
             double[] prevScaled = getScaledMousePos(prevX, prevY);

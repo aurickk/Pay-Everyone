@@ -10,11 +10,9 @@ import pay.everyone.mod.compat.RenderHelper;
 import java.lang.reflect.Method;
 
 public class KeybindWidget extends Widget {
-    // Cached reflection for cross-version compatibility
     private static Method getKeyMethod = null;
     private static Method getKeyFromTypeMethod = null;
     private static boolean reflectionInitialized = false;
-    // Fixed label width so all keybind boxes align and have the same width
     private static final int LABEL_WIDTH = 80;
 
     private final String label;
@@ -35,14 +33,11 @@ public class KeybindWidget extends Widget {
         
         var font = Minecraft.getInstance().font;
         
-        // Draw label on the left
         RenderHelper.drawString(graphics, font, label, x, y + (height - 8) / 2, Theme.TEXT_PRIMARY, false);
         
-        // Calculate button area (right side) using fixed label width
         int btnX = x + LABEL_WIDTH;
         int btnWidth = width - LABEL_WIDTH;
         
-        // Draw button background
         boolean btnHovered = mouseX >= btnX && mouseX < btnX + btnWidth && mouseY >= y && mouseY < y + height;
         int bgColor;
         if (listening) {
@@ -59,7 +54,6 @@ public class KeybindWidget extends Widget {
         RenderHelper.fill(graphics, btnX, y, btnX + 1, y + height, Theme.BORDER);
         RenderHelper.fill(graphics, btnX + btnWidth - 1, y, btnX + btnWidth, y + height, Theme.BORDER);
         
-        // Draw key name or "Press a key..."
         String keyText;
         int textColor;
         if (listening) {
@@ -77,12 +71,10 @@ public class KeybindWidget extends Widget {
     }
     
     private String getKeyName() {
-        // Use the standard translated key message, which always reflects the current binding
         try {
             return keyMapping.getTranslatedKeyMessage().getString();
         } catch (Exception ignored) {}
         
-        // Fallbacks for edge cases / older mappings
         try {
             return keyMapping.getDefaultKey().getDisplayName().getString();
         } catch (Exception ignored) {}
@@ -97,10 +89,8 @@ public class KeybindWidget extends Widget {
         int btnX = x + LABEL_WIDTH;
         int btnWidth = width - LABEL_WIDTH;
         
-        // Check if clicked on the button area
         if (mouseX >= btnX && mouseX < btnX + btnWidth && mouseY >= y && mouseY < y + height) {
             if (listening) {
-                // Clicking again while listening cancels
                 stopListening();
             } else {
                 startListening();
@@ -116,20 +106,22 @@ public class KeybindWidget extends Widget {
         if (!listening) return false;
         
         if (keyCode == InputConstants.KEY_ESCAPE) {
-            // Cancel without changing
             stopListening();
             return true;
         }
         
-        // Set the new key using reflection for cross-version compatibility
         InputConstants.Key key = getKeyCompat(keyCode, scanCode);
-        if (key != null) {
+        if (key != null && key != InputConstants.UNKNOWN) {
             keyMapping.setKey(key);
             try {
                 KeyMapping.resetMapping();
             } catch (Throwable t) {
-                // Some versions might not have this method
                 PayEveryone.LOGGER.debug("KeyMapping.resetMapping() not available");
+            }
+            try {
+                Minecraft.getInstance().options.save();
+            } catch (Throwable t) {
+                PayEveryone.LOGGER.debug("Failed to save options: {}", t.getMessage());
             }
         }
         
@@ -137,17 +129,11 @@ public class KeybindWidget extends Widget {
         return true;
     }
     
-    /**
-     * Get InputConstants.Key using reflection to handle API differences between versions.
-     * In legacy versions: InputConstants.getKey(int keyCode, int scanCode)
-     * In modern versions: InputConstants.Type.KEYSYM.getOrCreate(int keyCode)
-     */
     private static InputConstants.Key getKeyCompat(int keyCode, int scanCode) {
         if (!reflectionInitialized) {
             initReflection();
         }
         
-        // Try legacy method first: InputConstants.getKey(int, int)
         if (getKeyMethod != null) {
             try {
                 return (InputConstants.Key) getKeyMethod.invoke(null, keyCode, scanCode);
@@ -156,7 +142,6 @@ public class KeybindWidget extends Widget {
             }
         }
         
-        // Try modern method: InputConstants.Type.KEYSYM.getOrCreate(int)
         if (getKeyFromTypeMethod != null) {
             try {
                 Object keysymType = InputConstants.Type.KEYSYM;
@@ -166,7 +151,12 @@ public class KeybindWidget extends Widget {
             }
         }
         
-        // Final fallback: try direct UNKNOWN key
+        try {
+            return InputConstants.Type.KEYSYM.getOrCreate(keyCode);
+        } catch (Throwable t) {
+            PayEveryone.LOGGER.debug("Direct KEYSYM.getOrCreate failed: {}", t.getMessage());
+        }
+        
         PayEveryone.LOGGER.warn("Could not get key for keyCode={}, scanCode={}", keyCode, scanCode);
         return InputConstants.UNKNOWN;
     }
@@ -174,12 +164,10 @@ public class KeybindWidget extends Widget {
     private static void initReflection() {
         reflectionInitialized = true;
         
-        // Try to find InputConstants.getKey(int, int) - legacy
         try {
             getKeyMethod = InputConstants.class.getMethod("getKey", int.class, int.class);
             PayEveryone.LOGGER.debug("Found InputConstants.getKey(int, int)");
         } catch (NoSuchMethodException e) {
-            // Try obfuscated name
             for (Method m : InputConstants.class.getMethods()) {
                 if (m.getParameterCount() == 2 && 
                     m.getParameterTypes()[0] == int.class && 
@@ -192,12 +180,10 @@ public class KeybindWidget extends Widget {
             }
         }
         
-        // Try to find InputConstants.Type.getOrCreate(int) - modern
         try {
             getKeyFromTypeMethod = InputConstants.Type.class.getMethod("getOrCreate", int.class);
             PayEveryone.LOGGER.debug("Found InputConstants.Type.getOrCreate(int)");
         } catch (NoSuchMethodException e) {
-            // Try to find any method on Type that returns Key and takes int
             for (Method m : InputConstants.Type.class.getMethods()) {
                 if (m.getParameterCount() == 1 && 
                     m.getParameterTypes()[0] == int.class &&
@@ -211,7 +197,6 @@ public class KeybindWidget extends Widget {
     }
     
     private void startListening() {
-        // Stop any other widget that was listening
         if (currentlyListening != null && currentlyListening != this) {
             currentlyListening.stopListening();
         }
