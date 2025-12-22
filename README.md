@@ -64,8 +64,6 @@ Discovers players on large servers by querying the server's `/pay` command autoc
 | **Double Send** | Send each payment command twice |
 | **Keybinds** | View/change the force-stop keybind (default: **J**) |
 
----
-
 ## Commands & Keybinds
 
 - `/payeveryone show` — Show the GUI
