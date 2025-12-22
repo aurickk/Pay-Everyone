@@ -8,7 +8,7 @@
 
 ## What It Does
 
-A GUI that automatically opens with your inventory to pay all online players with one click. Discovers players, randomizes payment order, and sends commands with configurable delays.
+A GUI that automatically opens with your inventory to pay all online players with one click. Discovers players, randomizes payment order, and send commands with configurable delays.
 
 
 ![paydemo](https://github.com/user-attachments/assets/1e32f506-f7b8-46ac-a46d-8d8bd6c27397)
