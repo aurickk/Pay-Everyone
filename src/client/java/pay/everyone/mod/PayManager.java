@@ -420,8 +420,8 @@ public class PayManager {
 
     private void finishScan() {
         synchronized (scanLock) { 
-        if (scanCompleted) return;
-            scanCompleted = !isAutoScan;
+            if (scanCompleted) return;
+            scanCompleted = true;  // Always mark scan as completed to prevent re-triggering
         }
         isTabScanning = false;
         isPaused = false;

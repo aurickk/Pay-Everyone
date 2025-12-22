@@ -473,8 +473,6 @@ public class PayEveryoneWindow {
         }
     }
     
-    // ================== RENDER ==================
-    
     private float getScale() {
         // Use raw scale based on current width; no snapping
         return (float) width / BASE_WIDTH;
@@ -621,7 +619,6 @@ public class PayEveryoneWindow {
     }
     
     private void updateStatusDisplay() {
-        // Status text
         String lastError = payManager.getLastError();
         if (lastError != null && System.currentTimeMillis() < errorDisplayUntil) {
             statusLabel.setText(lastError);
@@ -701,9 +698,6 @@ public class PayEveryoneWindow {
         return height;
     }
     
-    // ================== MOUSE INPUT ==================
-    
-    // Convert screen coordinates to "base" coordinates for widget interaction
     private double toScaledX(double mouseX) {
         return (mouseX - x) / getScale();
     }
@@ -787,7 +781,6 @@ public class PayEveryoneWindow {
             return true;
         }
         
-        // Use scaled (base space) coordinates for widget interaction
         double widgetMouseX = toScaledX(mouseX);
         double widgetMouseY = toScaledY(mouseY);
         

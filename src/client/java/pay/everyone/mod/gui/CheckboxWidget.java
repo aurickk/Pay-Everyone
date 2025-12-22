@@ -28,10 +28,7 @@ public class CheckboxWidget extends Widget {
         int bgColor = hovered && enabled ? Theme.BG_HOVER : Theme.BG_TERTIARY;
         int borderColor = (hovered && enabled) ? Theme.ACCENT : Theme.BORDER;
         RenderHelper.fill(graphics, x, boxY, x + BOX_SIZE, boxY + BOX_SIZE, bgColor);
-        RenderHelper.fill(graphics, x, boxY, x + BOX_SIZE, boxY + 1, borderColor);
-        RenderHelper.fill(graphics, x, boxY + BOX_SIZE - 1, x + BOX_SIZE, boxY + BOX_SIZE, borderColor);
-        RenderHelper.fill(graphics, x, boxY, x + 1, boxY + BOX_SIZE, borderColor);
-        RenderHelper.fill(graphics, x + BOX_SIZE - 1, boxY, x + BOX_SIZE, boxY + BOX_SIZE, borderColor);
+        RenderHelper.drawBorder(graphics, x, boxY, x + BOX_SIZE, boxY + BOX_SIZE, borderColor);
         
         if (checked) {
             int checkColor = enabled ? Theme.ACCENT : Theme.TEXT_DISABLED;

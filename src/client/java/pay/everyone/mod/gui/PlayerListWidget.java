@@ -40,12 +40,15 @@ public class PlayerListWidget extends Widget {
     }
     
     @Override
-    public void render(GuiGraphics graphics, int mouseX, int mouseY, float delta) {
-        if (!visible) return;
-        
+    public void tick() {
         if (playerProvider != null) {
             players = new ArrayList<>(playerProvider.get());
         }
+    }
+    
+    @Override
+    public void render(GuiGraphics graphics, int mouseX, int mouseY, float delta) {
+        if (!visible) return;
         
         int listHeight = height - 12;
         int maxVisible = (listHeight - 2) / ITEM_HEIGHT;
@@ -70,10 +73,7 @@ public class PlayerListWidget extends Widget {
         int listY = y + 12;
         
         RenderHelper.fill(graphics, x, listY, x + width, listY + listHeight, Theme.BG_TERTIARY);
-        RenderHelper.fill(graphics, x, listY, x + width, listY + 1, Theme.BORDER);
-        RenderHelper.fill(graphics, x, listY + listHeight - 1, x + width, listY + listHeight, Theme.BORDER);
-        RenderHelper.fill(graphics, x, listY, x + 1, listY + listHeight, Theme.BORDER);
-        RenderHelper.fill(graphics, x + width - 1, listY, x + width, listY + listHeight, Theme.BORDER);
+        RenderHelper.drawBorder(graphics, x, listY, x + width, listY + listHeight, Theme.BORDER);
         
         int scissorX1 = toScreenX(x + 1);
         int scissorY1 = toScreenY(listY + 1);
@@ -291,17 +291,13 @@ public class PlayerListWidget extends Widget {
         int menuWidth = 70;
         int menuHeight = 18;
         
-        // Draw menu background with border
         RenderHelper.fill(graphics, contextMenuX, contextMenuY, contextMenuX + menuWidth, contextMenuY + menuHeight, Theme.BG_PRIMARY);
         RenderHelper.fill(graphics, contextMenuX, contextMenuY, contextMenuX + menuWidth, contextMenuY + 1, Theme.ERROR);
-        RenderHelper.fill(graphics, contextMenuX, contextMenuY + menuHeight - 1, contextMenuX + menuWidth, contextMenuY + menuHeight, Theme.BORDER);
-        RenderHelper.fill(graphics, contextMenuX, contextMenuY, contextMenuX + 1, contextMenuY + menuHeight, Theme.BORDER);
-        RenderHelper.fill(graphics, contextMenuX + menuWidth - 1, contextMenuY, contextMenuX + menuWidth, contextMenuY + menuHeight, Theme.BORDER);
+        RenderHelper.drawBorder(graphics, contextMenuX, contextMenuY, contextMenuX + menuWidth, contextMenuY + menuHeight, Theme.BORDER);
         
         boolean isHovered = mouseX >= contextMenuX && mouseX < contextMenuX + menuWidth &&
             mouseY >= contextMenuY && mouseY < contextMenuY + menuHeight;
         
-        // Hover highlight
         if (isHovered) {
             RenderHelper.fill(graphics, contextMenuX + 1, contextMenuY + 1, contextMenuX + menuWidth - 1, contextMenuY + menuHeight - 1, 0x40FF5555);
         }

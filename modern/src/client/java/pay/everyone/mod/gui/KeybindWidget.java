@@ -43,10 +43,7 @@ public class KeybindWidget extends Widget {
         }
         
         RenderHelper.fill(graphics, btnX, y, btnX + btnWidth, y + height, bgColor);
-        RenderHelper.fill(graphics, btnX, y, btnX + btnWidth, y + 1, Theme.BORDER);
-        RenderHelper.fill(graphics, btnX, y + height - 1, btnX + btnWidth, y + height, Theme.BORDER);
-        RenderHelper.fill(graphics, btnX, y, btnX + 1, y + height, Theme.BORDER);
-        RenderHelper.fill(graphics, btnX + btnWidth - 1, y, btnX + btnWidth, y + height, Theme.BORDER);
+        RenderHelper.drawBorder(graphics, btnX, y, btnX + btnWidth, y + height, Theme.BORDER);
         
         String keyText;
         int textColor;

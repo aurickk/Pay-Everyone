@@ -37,10 +37,7 @@ public class TextFieldWidget extends Widget {
         int borderColor = focused ? Theme.BORDER_FOCUS : (hovered ? Theme.ACCENT : Theme.BORDER);
         
         RenderHelper.fill(graphics, x, y, x + width, y + height, bgColor);
-        RenderHelper.fill(graphics, x, y, x + width, y + 1, borderColor);
-        RenderHelper.fill(graphics, x, y + height - 1, x + width, y + height, borderColor);
-        RenderHelper.fill(graphics, x, y, x + 1, y + height, borderColor);
-        RenderHelper.fill(graphics, x + width - 1, y, x + width, y + height, borderColor);
+        RenderHelper.drawBorder(graphics, x, y, x + width, y + height, borderColor);
         
         var font = Minecraft.getInstance().font;
         int textY = y + (height - 8) / 2;
@@ -103,10 +100,7 @@ public class TextFieldWidget extends Widget {
         int maxTextWidth = width - 8;
         
         RenderHelper.fill(graphics, x, sugY, x + width, sugY + sugHeight, Theme.BG_PRIMARY);
-        RenderHelper.fill(graphics, x, sugY, x + width, sugY + 1, Theme.BORDER);
-        RenderHelper.fill(graphics, x, sugY + sugHeight - 1, x + width, sugY + sugHeight, Theme.BORDER);
-        RenderHelper.fill(graphics, x, sugY, x + 1, sugY + sugHeight, Theme.BORDER);
-        RenderHelper.fill(graphics, x + width - 1, sugY, x + width, sugY + sugHeight, Theme.BORDER);
+        RenderHelper.drawBorder(graphics, x, sugY, x + width, sugY + sugHeight, Theme.BORDER);
         
         for (int i = 0; i < maxVisible; i++) {
             int itemY = sugY + 2 + i * 12;

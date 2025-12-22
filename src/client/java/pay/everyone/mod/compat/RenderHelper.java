@@ -114,6 +114,13 @@ public class RenderHelper {
         } catch (Throwable t) {}
     }
     
+    public static void drawBorder(GuiGraphics graphics, int x1, int y1, int x2, int y2, int color) {
+        fill(graphics, x1, y1, x2, y1 + 1, color);
+        fill(graphics, x1, y2 - 1, x2, y2, color);
+        fill(graphics, x1, y1, x1 + 1, y2, color);
+        fill(graphics, x2 - 1, y1, x2, y2, color);
+    }
+    
     public static void enableScissor(GuiGraphics graphics, int x1, int y1, int x2, int y2) {
         if (graphics == null) return;
         if (!initialized) init(graphics);
@@ -158,7 +165,7 @@ public class RenderHelper {
         } catch (Throwable t) {}
     }
     
-    public static void translate(GuiGraphics graphics, double x, double y, double z) {
+    public static void translate(GuiGraphics graphics, float x, float y, float z) {
         if (graphics == null) return;
         if (!initialized) init(graphics);
         if (!hasPoseStack || translateMethod == null) return;
@@ -169,15 +176,15 @@ public class RenderHelper {
                 Class<?>[] paramTypes = translateMethod.getParameterTypes();
                 if (translateParamCount == 3) {
                     if (paramTypes[0] == double.class) {
-                        translateMethod.invoke(poseStack, x, y, z);
+                        translateMethod.invoke(poseStack, (double)x, (double)y, (double)z);
                     } else {
-                        translateMethod.invoke(poseStack, (float)x, (float)y, (float)z);
+                        translateMethod.invoke(poseStack, x, y, z);
                     }
                 } else if (translateParamCount == 2) {
                     if (paramTypes[0] == double.class) {
-                        translateMethod.invoke(poseStack, x, y);
+                        translateMethod.invoke(poseStack, (double)x, (double)y);
                     } else {
-                        translateMethod.invoke(poseStack, (float)x, (float)y);
+                        translateMethod.invoke(poseStack, x, y);
                     }
                 }
             }

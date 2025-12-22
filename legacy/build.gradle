@@ -62,6 +62,7 @@ task copySharedClientSources(type: Copy) {
     from rootProject.file('src/client/java')
     into "${buildDir}/generated/shared/client/java"
     exclude '**/compat/RenderHelper.java'
+    exclude '**/mixin/client/InventoryScreenMixin.java'
 }
 
 compileClientJava.dependsOn copySharedClientSources

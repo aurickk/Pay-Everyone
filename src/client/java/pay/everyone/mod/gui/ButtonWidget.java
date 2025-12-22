@@ -33,10 +33,7 @@ public class ButtonWidget extends Widget {
         
         RenderHelper.fill(graphics, x, y, x + width, y + height, bgColor);
         int borderColor = (hovered && enabled) ? Theme.ACCENT : Theme.BORDER;
-        RenderHelper.fill(graphics, x, y, x + width, y + 1, borderColor);
-        RenderHelper.fill(graphics, x, y + height - 1, x + width, y + height, borderColor);
-        RenderHelper.fill(graphics, x, y, x + 1, y + height, borderColor);
-        RenderHelper.fill(graphics, x + width - 1, y, x + width, y + height, borderColor);
+        RenderHelper.drawBorder(graphics, x, y, x + width, y + height, borderColor);
         
         int textColor = enabled ? (hovered ? Theme.ACCENT : Theme.TEXT_PRIMARY) : Theme.TEXT_DISABLED;
         var font = Minecraft.getInstance().font;
