@@ -4,6 +4,7 @@ import net.minecraft.client.KeyMapping;
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.gui.GuiGraphics;
 import org.lwjgl.glfw.GLFW;
+import pay.everyone.mod.ModConfig;
 import pay.everyone.mod.compat.RenderHelper;
 
 public class PayEveryoneHud {
@@ -18,6 +19,7 @@ public class PayEveryoneHud {
     
     private PayEveryoneHud() {
         window = new PayEveryoneWindow();
+        manuallyHidden = ModConfig.getInstance().isGuiHidden();
     }
     
     public static PayEveryoneHud getInstance() {
@@ -85,6 +87,7 @@ public class PayEveryoneHud {
     
     public void setManuallyHidden(boolean hidden) {
         this.manuallyHidden = hidden;
+        ModConfig.getInstance().setGuiHidden(hidden);
         if (hidden) {
             window.setVisible(false);
         } else if (inventoryMode) {

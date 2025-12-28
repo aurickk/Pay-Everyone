@@ -538,10 +538,16 @@ public class PayEveryoneWindow {
         int dotColor = pinned ? Theme.PIN_ACTIVE : Theme.PIN_INACTIVE;
         RenderHelper.fill(graphics, pinX + 3, pinY + 3, pinX + 9, pinY + 9, dotColor);
         
+        int hideX = pinX - 16;
+        int hideY = oy + 2;
+        int hideBg = isMouseOverHideScaled(scaledMouseX, scaledMouseY) ? Theme.BG_HOVER : Theme.BG_TERTIARY;
+        RenderHelper.fill(graphics, hideX, hideY, hideX + 12, hideY + 12, hideBg);
+        RenderHelper.fill(graphics, hideX + 3, hideY + 5, hideX + 9, hideY + 7, Theme.TEXT_SECONDARY);
+        
         if (pinned) {
             String pinnedText = "Pinned";
             int pinnedWidth = mc.font.width(pinnedText);
-            RenderHelper.drawString(graphics, mc.font, pinnedText, pinX - pinnedWidth - 4, oy + 4, Theme.WARNING, false);
+            RenderHelper.drawString(graphics, mc.font, pinnedText, hideX - pinnedWidth - 4, oy + 4, Theme.WARNING, false);
         }
         
         int tabY = oy + TITLE_BAR_HEIGHT;
@@ -616,6 +622,12 @@ public class PayEveryoneWindow {
         int pinX = BASE_WIDTH - 14;
         int pinY = 2;
         return scaledMouseX >= pinX && scaledMouseX < pinX + 12 && scaledMouseY >= pinY && scaledMouseY < pinY + 12;
+    }
+    
+    private boolean isMouseOverHideScaled(int scaledMouseX, int scaledMouseY) {
+        int hideX = BASE_WIDTH - 14 - 16;
+        int hideY = 2;
+        return scaledMouseX >= hideX && scaledMouseX < hideX + 12 && scaledMouseY >= hideY && scaledMouseY < hideY + 12;
     }
     
     private void updateStatusDisplay() {
@@ -739,6 +751,19 @@ public class PayEveryoneWindow {
         int pinY = 2;
         if (scaledX >= pinX && scaledX < pinX + 12 && scaledY >= pinY && scaledY < pinY + 12) {
             pinned = !pinned;
+            return true;
+        }
+        
+        int hideX = pinX - 16;
+        int hideY = 2;
+        if (scaledX >= hideX && scaledX < hideX + 12 && scaledY >= hideY && scaledY < hideY + 12) {
+            PayEveryoneHud.getInstance().setManuallyHidden(true);
+            Minecraft mc = Minecraft.getInstance();
+            if (mc.player != null) {
+                mc.player.displayClientMessage(
+                    net.minecraft.network.chat.Component.literal("§e[Pay Everyone] GUI hidden. Use /payeveryone show to restore."), 
+                    false);
+            }
             return true;
         }
         
