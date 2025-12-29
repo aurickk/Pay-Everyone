@@ -29,7 +29,7 @@ A GUI that automatically opens with your inventory to pay all online players wit
 
 ## How to Use
 
-The GUI opens automatically when you open your inventory. Use `/payeveryone show` or `/payeveryone hide` to control visibility. Click the pin button to keep it visible when inventory is closed.
+The GUI opens automatically when you open your inventory. Use the minimize button to hide the GUI and `/payeveryone show` to unhide the menu. Click the pin button to keep it visible when inventory is closed.
 
 ### Main Tab
 
