@@ -373,18 +373,25 @@ public class PayEveryoneWindow {
         });
         addWidget(scanTabWidgets, clearScanListButton, 8 + (btnW + 4) * 2, cy + 32);
         
+        int halfBtnW = (cw - 4) / 2;
+        ButtonWidget exportButton = new ButtonWidget(0, 0, halfBtnW, 20, "Export", payManager::exportPlayerList);
+        addWidget(scanTabWidgets, exportButton, 8, cy + 56);
+        
+        ButtonWidget importButton = new ButtonWidget(0, 0, halfBtnW, 20, "Import", payManager::importPlayerList);
+        addWidget(scanTabWidgets, importButton, 8 + halfBtnW + 4, cy + 56);
+        
         scanProgressBar = new ProgressBarWidget(0, 0, cw, "Scan");
-        addWidget(scanTabWidgets, scanProgressBar, 8, cy + 60);
+        addWidget(scanTabWidgets, scanProgressBar, 8, cy + 84);
         
         LabelWidget scanLogLabel = new LabelWidget(0, 0, cw, "Scan Log:");
         scanLogLabel.setColor(Theme.TEXT_SECONDARY);
-        addWidget(scanTabWidgets, scanLogLabel, 8, cy + 90);
+        addWidget(scanTabWidgets, scanLogLabel, 8, cy + 114);
         
-        scanLogList = new PlayerListWidget(0, 0, cw, 150, "");
+        scanLogList = new PlayerListWidget(0, 0, cw, 126, "");
         scanLogList.setPlayerProvider(payManager::getScanLogs);
         scanLogList.setAutoScroll(true);
         scanLogList.setShowCount(false);
-        addWidget(scanTabWidgets, scanLogList, 8, cy + 102);
+        addWidget(scanTabWidgets, scanLogList, 8, cy + 126);
     }
     
     private List<String> getTablistPlayerNames() {

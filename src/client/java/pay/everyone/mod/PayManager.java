@@ -1,5 +1,7 @@
 package pay.everyone.mod;
 
+import com.google.gson.Gson;
+import com.google.gson.GsonBuilder;
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.multiplayer.ClientPacketListener;
 import net.minecraft.client.multiplayer.PlayerInfo;
@@ -7,6 +9,12 @@ import net.minecraft.client.player.LocalPlayer;
 import net.minecraft.network.protocol.game.ServerboundChatCommandPacket;
 import net.minecraft.network.protocol.game.ServerboundCommandSuggestionPacket;
 
+import org.lwjgl.PointerBuffer;
+import org.lwjgl.system.MemoryStack;
+import org.lwjgl.util.tinyfd.TinyFileDialogs;
+import java.io.*;
+import java.nio.charset.StandardCharsets;
+import java.nio.file.*;
 import java.util.*;
 import java.util.concurrent.CompletableFuture;
 import java.util.stream.Collectors;
@@ -863,5 +871,104 @@ public class PayManager {
                 }
             });
         });
+    }
+
+    // Player list import/export (tabscan players only)
+    
+    private static class PlayerListData {
+        String version = "1.0";
+        long exportedAt;
+        List<String> players = new ArrayList<>();
+    }
+    
+    public void exportPlayerList() {
+        new Thread(() -> {
+            try (MemoryStack stack = MemoryStack.stackPush()) {
+                PointerBuffer filters = stack.mallocPointer(1);
+                filters.put(stack.UTF8("*.json"));
+                filters.flip();
+                
+                String result = TinyFileDialogs.tinyfd_saveFileDialog(
+                    "Export Scanned Players",
+                    "scanned_players.json",
+                    filters,
+                    "JSON Files (*.json)"
+                );
+                
+                if (result == null) return;
+                
+                File file = new File(result);
+                if (!file.getName().toLowerCase().endsWith(".json")) {
+                    file = new File(file.getParentFile(), file.getName() + ".json");
+                }
+                
+                PlayerListData data = new PlayerListData();
+                data.exportedAt = System.currentTimeMillis();
+                synchronized (playerListLock) {
+                    data.players = new ArrayList<>(tabScanPlayerList);
+                }
+                
+                Gson gson = new GsonBuilder().setPrettyPrinting().create();
+                String json = gson.toJson(data);
+                Files.write(file.toPath(), json.getBytes(StandardCharsets.UTF_8), 
+                    StandardOpenOption.CREATE, StandardOpenOption.TRUNCATE_EXISTING);
+                
+                addScanLog("Exported " + data.players.size() + " players to " + file.getName());
+            } catch (Exception e) {
+                PayEveryone.LOGGER.error("Failed to export player list", e);
+                addScanLog("Export failed: " + e.getMessage());
+            }
+        }, "PlayerList-Export").start();
+    }
+    
+    public void importPlayerList() {
+        new Thread(() -> {
+            try (MemoryStack stack = MemoryStack.stackPush()) {
+                PointerBuffer filters = stack.mallocPointer(1);
+                filters.put(stack.UTF8("*.json"));
+                filters.flip();
+                
+                String result = TinyFileDialogs.tinyfd_openFileDialog(
+                    "Import Scanned Players",
+                    "",
+                    filters,
+                    "JSON Files (*.json)",
+                    false
+                );
+                
+                if (result == null) return;
+                
+                File file = new File(result);
+                String json = Files.readString(file.toPath(), StandardCharsets.UTF_8);
+                Gson gson = new Gson();
+                PlayerListData data = gson.fromJson(json, PlayerListData.class);
+                
+                if (data == null || data.players == null) {
+                    addScanLog("Import failed: Invalid JSON");
+                    return;
+                }
+                
+                int imported = 0;
+                synchronized (playerListLock) {
+                    tabScanPlayerList.clear();
+                    for (String player : data.players) {
+                        if (player != null && !player.trim().isEmpty()) {
+                            tabScanPlayerList.add(player.trim());
+                            imported++;
+                        }
+                    }
+                }
+                
+                if (imported > 0) {
+                    scanCompleted = true;
+                    lastDiscoveryMethod = "imported";
+                }
+                
+                addScanLog("Imported " + imported + " players from " + file.getName());
+            } catch (Exception e) {
+                PayEveryone.LOGGER.error("Failed to import player list", e);
+                addScanLog("Import failed: " + e.getMessage());
+            }
+        }, "PlayerList-Import").start();
     }
 }
