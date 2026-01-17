@@ -15,7 +15,7 @@ A GUI that automatically opens with your inventory to pay all online players wit
 
 ## Requirements
 
-- **Minecraft** 1.21.1 – 1.21.10
+- **Minecraft** 1.21.1 – 1.21.11
 - **Fabric Loader** 0.15.0+
 - **Fabric API** (matching your Minecraft version)
 
@@ -53,6 +53,7 @@ Discovers players on large servers by querying the server's `/pay` command autoc
 
 - **Scan Interval** — Delay between queries (default: 50ms)
 - **Start Scan / Cancel / Clear List** — Control the scan
+- **Export / Import** — Save scanned players to JSON or load from file
 
 ### Settings Tab
 
@@ -98,4 +99,4 @@ Change keybinds in **Options → Controls → Key Binds → Pay Everyone**.
    ./gradlew build
    ```
 
-Output JARs are in `legacy/build/libs/` (1.21.1 - 1.21.5) and `modern/build/libs/` (1.21.6 - 1.21.10).
+Output JARs are in `legacy/build/libs/` (1.21.1 - 1.21.5) and `modern/build/libs/` (1.21.6 - 1.21.11).
