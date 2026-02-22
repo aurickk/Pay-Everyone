@@ -99,4 +99,8 @@ Change keybinds in **Options → Controls → Key Binds → Pay Everyone**.
    ./gradlew build
    ```
 
+<<<<<<< HEAD
 Output JARs are in `legacy/build/libs/` (1.21.1 - 1.21.5) and `modern/build/libs/` (1.21.6 - 1.21.11).
+=======
+Output JARs are in `versions/1.21.4/build/libs/` (1.21.1 - 1.21.5) and `versions/1.21.6/build/libs/` (1.21.6 - 1.21.11).
+>>>>>>> 230b532 (feat: migrate to stonecutter)

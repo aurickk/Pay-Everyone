@@ -1,6 +1,12 @@
 package pay.everyone.mod;
 
 import net.minecraft.client.Minecraft;
+<<<<<<< HEAD
+=======
+//? if >=1.21.6 {
+import net.minecraft.client.KeyMapping;
+//?}
+>>>>>>> 230b532 (feat: migrate to stonecutter)
 import org.lwjgl.glfw.GLFW;
 import org.lwjgl.glfw.GLFWMouseButtonCallback;
 import org.lwjgl.glfw.GLFWScrollCallback;
@@ -107,6 +113,7 @@ public class InputHandler {
         Minecraft mc = Minecraft.getInstance();
         PayEveryoneHud hud = PayEveryoneHud.getInstance();
         double[] scaled = getScaledMousePos(lastMouseX, lastMouseY);
+<<<<<<< HEAD
 
         if (mc.screen != null && hud.isInventoryMode()) {
             if (action == GLFW.GLFW_PRESS) {
@@ -120,6 +127,27 @@ public class InputHandler {
             return false;
         }
 
+=======
+        
+        //? if >=1.21.6 {
+        if (mc.screen != null && hud.isInventoryMode()) {
+            if (action == GLFW.GLFW_PRESS) {
+                lastButton = button;
+                if (hud.handleInventoryClick(scaled[0], scaled[1], button)) {
+                    return true;
+                }
+            } else if (action == GLFW.GLFW_RELEASE) {
+                if (hud.handleInventoryRelease(scaled[0], scaled[1], button)) {
+                    lastButton = -1;
+                    return true;
+                }
+                lastButton = -1;
+            }
+            return false;
+        }
+        //?}
+        
+>>>>>>> 230b532 (feat: migrate to stonecutter)
         if (mc.screen != null) return false;
         if (!hud.shouldCaptureInput()) return false;
         
@@ -138,11 +166,24 @@ public class InputHandler {
         Minecraft mc = Minecraft.getInstance();
         PayEveryoneHud hud = PayEveryoneHud.getInstance();
         double[] scaled = getScaledMousePos(lastMouseX, lastMouseY);
+<<<<<<< HEAD
 
         if (mc.screen != null && hud.isInventoryMode()) {
             return hud.handleInventoryScroll(scaled[0], scaled[1], yOffset);
         }
 
+=======
+        
+        //? if >=1.21.6 {
+        if (mc.screen != null && hud.isInventoryMode()) {
+            if (hud.handleInventoryScroll(scaled[0], scaled[1], yOffset)) {
+                return true;
+            }
+            return false;
+        }
+        //?}
+        
+>>>>>>> 230b532 (feat: migrate to stonecutter)
         if (mc.screen != null) return false;
         if (!hud.shouldCaptureInput()) return false;
 
@@ -152,6 +193,7 @@ public class InputHandler {
     
     private static boolean handleKey(int key, int scancode, int action, int mods) {
         Minecraft mc = Minecraft.getInstance();
+<<<<<<< HEAD
         
         if (action == GLFW.GLFW_PRESS || action == GLFW.GLFW_REPEAT) {
             try {
@@ -170,10 +212,39 @@ public class InputHandler {
                             }
                             return true;
                         }
+=======
+        PayEveryoneHud hud = PayEveryoneHud.getInstance();
+        
+        if (action == GLFW.GLFW_PRESS || action == GLFW.GLFW_REPEAT) {
+            try {
+                boolean matched = false;
+                //? if >=1.21.6 {
+                KeyMapping cancelKey = PayEveryoneClient.getCancelPaymentKey();
+                matched = cancelKey != null && matchesKey(cancelKey, key, scancode);
+                if (!matched && cancelKey != null && scancode != 0) matched = matchesKey(cancelKey, key, 0);
+                //?} else {
+                if (PayEveryoneClient.getCancelPaymentKey() != null) {
+                    matched = matchesKey(PayEveryoneClient.getCancelPaymentKey(), key, scancode);
+                    if (!matched && scancode != 0) matched = matchesKey(PayEveryoneClient.getCancelPaymentKey(), key, 0);
+                }
+                //?}
+                if (matched) {
+                    PayManager pm = PayManager.getInstance();
+                    if (pm.isPaying() || pm.isTabScanning()) {
+                        pm.stopPaying();
+                        pm.stopTabScan();
+                        pm.clearTabScanList();
+                        if (mc.player != null) {
+                            mc.player.displayClientMessage(
+                                net.minecraft.network.chat.Component.literal("§e[Pay Everyone] Payment/Scan cancelled via keybind"), false);
+                        }
+                        return true;
+>>>>>>> 230b532 (feat: migrate to stonecutter)
                     }
                 }
             } catch (Throwable ignored) {}
         }
+<<<<<<< HEAD
 
         PayEveryoneHud hud = PayEveryoneHud.getInstance();
 
@@ -183,6 +254,22 @@ public class InputHandler {
             }
             return false;
         }
+=======
+        
+        //? if >=1.21.6 {
+        if (mc.screen != null && hud.isInventoryMode()) {
+            if (key == GLFW.GLFW_KEY_ESCAPE && PayManager.getInstance().isTabScanning()) {
+                return true;
+            }
+            if (action == GLFW.GLFW_PRESS || action == GLFW.GLFW_REPEAT) {
+                if (hud.handleInventoryKey(key, scancode, mods)) {
+                    return true;
+                }
+            }
+            return false;
+        }
+        //?}
+>>>>>>> 230b532 (feat: migrate to stonecutter)
 
         if (mc.screen != null) return false;
         if (!hud.shouldCaptureInput()) return false;
@@ -194,7 +281,15 @@ public class InputHandler {
         return true;
     }
     
+<<<<<<< HEAD
     private static boolean matchesKey(net.minecraft.client.KeyMapping keyMapping, int key, int scancode) {
+=======
+    //? if >=1.21.6 {
+    private static boolean matchesKey(KeyMapping keyMapping, int key, int scancode) {
+    //?} else {
+    private static boolean matchesKey(net.minecraft.client.KeyMapping keyMapping, int key, int scancode) {
+    //?}
+>>>>>>> 230b532 (feat: migrate to stonecutter)
         try {
             java.lang.reflect.Method matchesMethod = keyMapping.getClass().getMethod("matches", int.class, int.class);
             return (Boolean) matchesMethod.invoke(keyMapping, key, scancode);
@@ -226,10 +321,22 @@ public class InputHandler {
     private static boolean handleChar(int codepoint) {
         Minecraft mc = Minecraft.getInstance();
         PayEveryoneHud hud = PayEveryoneHud.getInstance();
+<<<<<<< HEAD
 
         if (mc.screen != null && hud.isInventoryMode()) {
             return hud.handleInventoryChar((char) codepoint, 0);
         }
+=======
+        
+        //? if >=1.21.6 {
+        if (mc.screen != null && hud.isInventoryMode()) {
+            if (hud.handleInventoryChar((char) codepoint, 0)) {
+                return true;
+            }
+            return false;
+        }
+        //?}
+>>>>>>> 230b532 (feat: migrate to stonecutter)
 
         if (mc.screen != null) return false;
         if (!hud.shouldCaptureInput()) return false;
@@ -246,11 +353,17 @@ public class InputHandler {
         
         Minecraft mc = Minecraft.getInstance();
         PayEveryoneHud hud = PayEveryoneHud.getInstance();
+<<<<<<< HEAD
 
+=======
+        
+        //? if >=1.21.6 {
+>>>>>>> 230b532 (feat: migrate to stonecutter)
         if (mc.screen != null && hud.isInventoryMode()) {
             if (lastButton >= 0) {
                 double[] scaled = getScaledMousePos(xpos, ypos);
                 double[] prevScaled = getScaledMousePos(prevX, prevY);
+<<<<<<< HEAD
                 return hud.handleInventoryDrag(
                     scaled[0], scaled[1], lastButton,
                     scaled[0] - prevScaled[0], scaled[1] - prevScaled[1]
@@ -258,6 +371,16 @@ public class InputHandler {
             }
             return false;
         }
+=======
+                if (hud.handleInventoryDrag(scaled[0], scaled[1], lastButton,
+                        scaled[0] - prevScaled[0], scaled[1] - prevScaled[1])) {
+                    return true;
+                }
+            }
+            return false;
+        }
+        //?}
+>>>>>>> 230b532 (feat: migrate to stonecutter)
 
         if (mc.screen != null) return false;
         if (!hud.shouldCaptureInput()) return false;

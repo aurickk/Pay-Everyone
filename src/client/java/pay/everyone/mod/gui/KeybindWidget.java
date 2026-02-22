@@ -4,6 +4,7 @@ import com.mojang.blaze3d.platform.InputConstants;
 import net.minecraft.client.KeyMapping;
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.gui.GuiGraphics;
+<<<<<<< HEAD
 import pay.everyone.mod.PayEveryone;
 import pay.everyone.mod.compat.RenderHelper;
 
@@ -13,6 +14,11 @@ public class KeybindWidget extends Widget {
     private static Method getKeyMethod = null;
     private static Method getKeyFromTypeMethod = null;
     private static boolean reflectionInitialized = false;
+=======
+import pay.everyone.mod.compat.RenderHelper;
+
+public class KeybindWidget extends Widget {
+>>>>>>> 230b532 (feat: migrate to stonecutter)
     private static final int LABEL_WIDTH = 80;
 
     private final String label;
@@ -107,6 +113,7 @@ public class KeybindWidget extends Widget {
             return true;
         }
         
+<<<<<<< HEAD
         InputConstants.Key key = getKeyCompat(keyCode, scanCode);
         if (key != null && key != InputConstants.UNKNOWN) {
             keyMapping.setKey(key);
@@ -121,11 +128,27 @@ public class KeybindWidget extends Widget {
                 PayEveryone.LOGGER.debug("Failed to save options: {}", t.getMessage());
             }
         }
+=======
+        //? if >=1.21.6 {
+        InputConstants.Key key = InputConstants.Type.KEYSYM.getOrCreate(keyCode);
+        keyMapping.setKey(key);
+        KeyMapping.resetMapping();
+        Minecraft.getInstance().options.save();
+        //? } else {
+        InputConstants.Key key = InputConstants.getKey(keyCode, scanCode);
+        if (key != null && key != InputConstants.UNKNOWN) {
+            keyMapping.setKey(key);
+            try { KeyMapping.resetMapping(); } catch (Throwable t) {}
+            try { Minecraft.getInstance().options.save(); } catch (Throwable t) {}
+        }
+        //?}
+>>>>>>> 230b532 (feat: migrate to stonecutter)
         
         stopListening();
         return true;
     }
     
+<<<<<<< HEAD
     private static InputConstants.Key getKeyCompat(int keyCode, int scanCode) {
         if (!reflectionInitialized) {
             initReflection();
@@ -193,6 +216,8 @@ public class KeybindWidget extends Widget {
         }
     }
     
+=======
+>>>>>>> 230b532 (feat: migrate to stonecutter)
     private void startListening() {
         if (currentlyListening != null && currentlyListening != this) {
             currentlyListening.stopListening();
@@ -216,4 +241,7 @@ public class KeybindWidget extends Widget {
         return currentlyListening != null;
     }
 }
+<<<<<<< HEAD
 
+=======
+>>>>>>> 230b532 (feat: migrate to stonecutter)

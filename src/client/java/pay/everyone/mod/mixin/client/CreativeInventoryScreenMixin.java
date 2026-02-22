@@ -40,6 +40,7 @@ public abstract class CreativeInventoryScreenMixin extends Screen {
         super.removed();
     }
     
+<<<<<<< HEAD
     @Override
     public boolean keyPressed(int keyCode, int scanCode, int modifiers) {
         if (keyCode == 256 && PayManager.getInstance().isTabScanning()) {
@@ -96,3 +97,8 @@ public abstract class CreativeInventoryScreenMixin extends Screen {
     }
 }
 
+=======
+    // Input handling is done via InputHandler.java using GLFW callbacks
+    // This bypasses Minecraft's changing Screen input API across versions
+}
+>>>>>>> 230b532 (feat: migrate to stonecutter)

@@ -5,6 +5,7 @@ import net.minecraft.client.KeyMapping;
 import com.mojang.blaze3d.platform.InputConstants;
 import net.minecraft.network.protocol.game.ClientboundCommandSuggestionsPacket;
 
+<<<<<<< HEAD
 import java.lang.reflect.*;
 import java.util.ArrayList;
 import java.util.Collections;
@@ -15,20 +16,46 @@ public class VersionCompat {
     private static Method getNameMethod = null;
     private static boolean versionDetected = false;
     
+=======
+import java.lang.reflect.Method;
+import java.util.Collections;
+import java.util.List;
+
+/**
+ * Version compatibility utilities for Pay Everyone mod.
+ * Uses Stonecutter compile-time conditionals for known API differences.
+ * Keeps reflection for GameProfile (authlib) and packet methods (version-dependent).
+ */
+public class VersionCompat {
+    // GameProfile reflection - authlib version varies independently of MC version
+    private static Method getNameMethod = null;
+    private static boolean profileDetected = false;
+    
+    // Packet methods reflection - method names vary between MC versions
+>>>>>>> 230b532 (feat: migrate to stonecutter)
     private static Method packetIdMethod = null;
     private static Method packetSuggestionsMethod = null;
     private static Method suggestionTextMethod = null;
     private static boolean packetMethodsDetected = false;
     
+<<<<<<< HEAD
     public static String getProfileName(GameProfile profile) {
         if (profile == null) return null;
         if (!versionDetected) detectApiVersion();
+=======
+    // ===== GameProfile methods (reflection - authlib dependent) =====
+    
+    public static String getProfileName(GameProfile profile) {
+        if (profile == null) return null;
+        if (!profileDetected) detectProfileMethod();
+>>>>>>> 230b532 (feat: migrate to stonecutter)
         
         if (getNameMethod != null) {
             try {
                 Object result = getNameMethod.invoke(profile);
                 return result != null ? result.toString() : null;
             } catch (Exception e) {
+<<<<<<< HEAD
                 PayEveryone.LOGGER.debug("Failed to invoke cached getNameMethod, trying fallback", e);
             }
         }
@@ -243,6 +270,70 @@ public class VersionCompat {
         return isNewApi != null && isNewApi;
     }
     
+=======
+                PayEveryone.LOGGER.debug("Failed to invoke cached getNameMethod", e);
+            }
+        }
+        return null;
+    }
+    
+    private static void detectProfileMethod() {
+        if (profileDetected) return;
+        
+        synchronized (VersionCompat.class) {
+            if (profileDetected) return;
+            
+            try {
+                getNameMethod = GameProfile.class.getMethod("name");
+            } catch (NoSuchMethodException e) {
+                try {
+                    getNameMethod = GameProfile.class.getMethod("getName");
+                } catch (NoSuchMethodException e2) {
+                    PayEveryone.LOGGER.error("Could not detect GameProfile API");
+                }
+            }
+            
+            profileDetected = true;
+        }
+    }
+    
+    // ===== KeyMapping (API changed across versions) =====
+    // 1.21.1-1.21.5: 4-arg constructor with InputConstants.Type
+    // 1.21.6-1.21.8: 3-arg constructor with String category
+    // 1.21.9+: 3-arg constructor with KeyMapping.Category
+    
+    //? if >=1.21.9 {
+    private static KeyMapping.Category cachedCategory = null;
+    //? }
+    
+    public static KeyMapping createKeyMapping(String translationKey, InputConstants.Type type, int keyCode, String categoryKey) {
+        //? if <1.21.6 {
+        return new KeyMapping(translationKey, type, keyCode, categoryKey);
+        //? } else {
+        //? if <1.21.9 {
+        return new KeyMapping(translationKey, keyCode, categoryKey);
+        //? } else {
+        if (cachedCategory == null) {
+            cachedCategory = KeyMapping.Category.register(net.minecraft.resources.ResourceLocation.parse("pay-everyone:main"));
+        }
+        return new KeyMapping(translationKey, keyCode, cachedCategory);
+        //? }
+        //? }
+    }
+    
+    // ===== API version check (compile-time constant) =====
+    
+    public static boolean isNewApi() {
+        //? if >=1.21.6 {
+        return true;
+        //? } else {
+        return false;
+        //?}
+    }
+    
+    // ===== Tick delta (compile-time conditional for method name) =====
+    
+>>>>>>> 230b532 (feat: migrate to stonecutter)
     public static float getTickDelta(Object tickDelta) {
         if (tickDelta == null) return 0.0f;
         
@@ -250,6 +341,10 @@ public class VersionCompat {
             return ((Number) tickDelta).floatValue();
         }
         
+<<<<<<< HEAD
+=======
+        //? if >=1.21.6 {
+>>>>>>> 230b532 (feat: migrate to stonecutter)
         try {
             Method method = tickDelta.getClass().getMethod("getRealtimeDeltaTicks");
             Object result = method.invoke(tickDelta);
@@ -257,7 +352,11 @@ public class VersionCompat {
                 return ((Number) result).floatValue();
             }
         } catch (Exception ignored) {}
+<<<<<<< HEAD
         
+=======
+        //? } else {
+>>>>>>> 230b532 (feat: migrate to stonecutter)
         try {
             Method method = tickDelta.getClass().getMethod("getTickDelta", boolean.class);
             Object result = method.invoke(tickDelta, true);
@@ -265,6 +364,10 @@ public class VersionCompat {
                 return ((Number) result).floatValue();
             }
         } catch (Exception ignored) {}
+<<<<<<< HEAD
+=======
+        //?}
+>>>>>>> 230b532 (feat: migrate to stonecutter)
         
         try {
             return Float.parseFloat(tickDelta.toString());
@@ -273,6 +376,11 @@ public class VersionCompat {
         return 0.0f;
     }
     
+<<<<<<< HEAD
+=======
+    // ===== Packet methods (reflection - method names vary) =====
+    
+>>>>>>> 230b532 (feat: migrate to stonecutter)
     private static void detectPacketMethods() {
         if (packetMethodsDetected) return;
         
@@ -322,10 +430,18 @@ public class VersionCompat {
         if (packet == null) return -1;
         detectPacketMethods();
         
+<<<<<<< HEAD
+=======
+        // Try direct access first (modern API)
+>>>>>>> 230b532 (feat: migrate to stonecutter)
         try {
             return packet.id();
         } catch (NoSuchMethodError ignored) {}
         
+<<<<<<< HEAD
+=======
+        // Fall back to reflection
+>>>>>>> 230b532 (feat: migrate to stonecutter)
         if (packetIdMethod != null) {
             try {
                 Object result = packetIdMethod.invoke(packet);
@@ -345,10 +461,18 @@ public class VersionCompat {
         if (packet == null) return Collections.emptyList();
         detectPacketMethods();
         
+<<<<<<< HEAD
+=======
+        // Try direct access first (modern API)
+>>>>>>> 230b532 (feat: migrate to stonecutter)
         try {
             return (List<ClientboundCommandSuggestionsPacket.Entry>) packet.suggestions();
         } catch (NoSuchMethodError ignored) {}
         
+<<<<<<< HEAD
+=======
+        // Fall back to reflection
+>>>>>>> 230b532 (feat: migrate to stonecutter)
         if (packetSuggestionsMethod != null) {
             try {
                 Object result = packetSuggestionsMethod.invoke(packet);
@@ -367,10 +491,18 @@ public class VersionCompat {
         if (entry == null) return null;
         detectPacketMethods();
         
+<<<<<<< HEAD
+=======
+        // Try direct access first (modern API)
+>>>>>>> 230b532 (feat: migrate to stonecutter)
         try {
             return entry.text();
         } catch (NoSuchMethodError ignored) {}
         
+<<<<<<< HEAD
+=======
+        // Fall back to reflection
+>>>>>>> 230b532 (feat: migrate to stonecutter)
         if (suggestionTextMethod != null) {
             try {
                 Object result = suggestionTextMethod.invoke(entry);

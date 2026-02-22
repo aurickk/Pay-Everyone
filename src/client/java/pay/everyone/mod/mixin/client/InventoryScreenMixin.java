@@ -1,7 +1,16 @@
 package pay.everyone.mod.mixin.client;
 
 import net.minecraft.client.gui.GuiGraphics;
+<<<<<<< HEAD
 import net.minecraft.client.gui.screens.Screen;
+=======
+//? if >=1.21.6 {
+import net.minecraft.client.gui.screens.inventory.AbstractContainerScreen;
+import net.minecraft.world.inventory.InventoryMenu;
+//?} else {
+import net.minecraft.client.gui.screens.Screen;
+//?}
+>>>>>>> 230b532 (feat: migrate to stonecutter)
 import net.minecraft.client.gui.screens.inventory.InventoryScreen;
 import org.spongepowered.asm.mixin.Mixin;
 import org.spongepowered.asm.mixin.injection.At;
@@ -10,9 +19,25 @@ import org.spongepowered.asm.mixin.injection.callback.CallbackInfo;
 import pay.everyone.mod.PayManager;
 import pay.everyone.mod.gui.PayEveryoneHud;
 
+<<<<<<< HEAD
 @Mixin(InventoryScreen.class)
 public abstract class InventoryScreenMixin extends Screen {
     protected InventoryScreenMixin() { super(null); }
+=======
+/**
+ * Consolidated InventoryScreenMixin for all Minecraft versions.
+ * Input handling is done purely through GLFW callbacks in InputHandler.
+ * This mixin only handles lifecycle (init/render/close) - NOT input events.
+ */
+@Mixin(InventoryScreen.class)
+//? if >=1.21.6 {
+public abstract class InventoryScreenMixin extends AbstractContainerScreen<InventoryMenu> {
+    protected InventoryScreenMixin() { super(null, null, null); }
+//?} else {
+public abstract class InventoryScreenMixin extends Screen {
+    protected InventoryScreenMixin() { super(null); }
+//?}
+>>>>>>> 230b532 (feat: migrate to stonecutter)
     
     @Inject(method = "init", at = @At("TAIL"))
     private void onInventoryInit(CallbackInfo ci) {
@@ -39,6 +64,7 @@ public abstract class InventoryScreenMixin extends Screen {
         PayEveryoneHud.getInstance().setInventoryMode(false);
         super.removed();
     }
+<<<<<<< HEAD
     
     @Override
     public boolean keyPressed(int keyCode, int scanCode, int modifiers) {
@@ -97,3 +123,6 @@ public abstract class InventoryScreenMixin extends Screen {
     }
 }
 
+=======
+}
+>>>>>>> 230b532 (feat: migrate to stonecutter)
