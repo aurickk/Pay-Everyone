@@ -3,11 +3,13 @@ plugins {
     id("maven-publish")
 }
 
-version = ""
+version = "${property("version_suffix")}+v${property("mod_version")}"
 group = property("maven_group") as String
 
+val modVersion = property("mod_version") as String
+
 base {
-    archivesName = "${property("archives_base_name")}-${property("version_suffix")}+v${property("mod_version")}"
+    archivesName = property("archives_base_name") as String
 }
 
 repositories {
@@ -77,12 +79,12 @@ dependencies {
 
 tasks.processResources {
     val mcVersionRange = (findProperty("minecraft_version_range") as? String) ?: ">=1.21"
-    inputs.property("version", project.version)
+    inputs.property("version", modVersion)
     inputs.property("minecraft_version_range", mcVersionRange)
 
     filesMatching("fabric.mod.json") {
         expand(
-            "version" to project.version,
+            "version" to modVersion,
             "minecraft_version_range" to mcVersionRange
         )
     }
