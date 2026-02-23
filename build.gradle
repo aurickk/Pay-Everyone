@@ -1,8 +1,0 @@
-//   All versions:    ./gradlew build
-//   Legacy only:     ./gradlew :legacy:build
-//   Modern only:     ./gradlew :modern:build
-// Output JARs are placed in each subproject's build/libs/ directory
-
-plugins {
-    id 'base'
-}
