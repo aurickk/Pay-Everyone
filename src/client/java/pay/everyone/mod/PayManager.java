@@ -17,6 +17,8 @@ import java.nio.charset.StandardCharsets;
 import java.nio.file.*;
 import java.util.*;
 import java.util.concurrent.CompletableFuture;
+import java.util.Deque;
+import java.util.ArrayDeque;
 import java.util.stream.Collectors;
 import java.util.regex.Pattern;
 
@@ -33,21 +35,53 @@ public class PayManager {
         "n", "o", "p", "q", "r", "s", "t", "u", "v", "w", "x", "y", "z",
         "0", "1", "2", "3", "4", "5", "6", "7", "8", "9", "_", ".",
     };
-    
+
+    private static final String[] SUBDIVISION_CHARS = {
+        "a", "b", "c", "d", "e", "f", "g", "h", "i", "j", "k", "l", "m",
+        "n", "o", "p", "q", "r", "s", "t", "u", "v", "w", "x", "y", "z",
+        "0", "1", "2", "3", "4", "5", "6", "7", "8", "9", "_", "."
+    };
+
+    /**
+     * Generate subdivision prefixes for a capped prefix.
+     * E.g., "A" -> ["Aa", "Ab", "Ac", ...]
+     */
+    private static List<String> generateSubdivisions(String prefix) {
+        List<String> subdivisions = new ArrayList<>();
+        for (String c : SUBDIVISION_CHARS) {
+            subdivisions.add(prefix + c);
+        }
+        return subdivisions;
+    }
+
+    /**
+     * Estimate subdivision depth from prefix length.
+     * Empty = 0, single char = 1, two chars = 2, etc.
+     */
+    private static int estimateDepthFromPrefix(String prefix) {
+        if (prefix == null || prefix.isEmpty()) return 0;
+        return prefix.length();
+    }
+
     private static final int COMMAND_CHECK_REQUEST_ID = 99998;
     private static final int TAB_SCAN_REQUEST_ID_BASE = 10000;
     private static final long COMMAND_CHECK_TIMEOUT_MS = 2000;
     private static final long CONFIRMATION_DELAY_MS = 500;
     public static final int MAX_CONTAINER_SLOT = 89;
     private static final long MAX_DELAY_MS = 60000;
+    private static final int CAP_LIMIT = 1000;
     
     private final Set<String> excludedPlayers = Collections.synchronizedSet(new HashSet<>());
     private final List<String> tabScanPlayerList = new ArrayList<>();
+    private final Deque<SubdivisionTask> subdivisionQueue = new ArrayDeque<>();
+    private final Set<String> seenPlayers = Collections.synchronizedSet(new HashSet<>());
+    private final Set<String> subdividedPrefixes = Collections.synchronizedSet(new HashSet<>());
     private final List<String> manualPlayerList = new ArrayList<>();
     private final Object playerListLock = new Object();
     private final Object paymentLock = new Object();
     private final Object scanLock = new Object();
     private final Set<Integer> processedRequestIds = Collections.synchronizedSet(new HashSet<>());
+    private final Map<Integer, String> subdivisionRequestPrefixes = Collections.synchronizedMap(new HashMap<>());
     
     private volatile boolean isPaying = false;
     private volatile boolean shouldStop = false;
@@ -69,6 +103,11 @@ public class PayManager {
     private volatile long doubleSendDelay = 1000;
     private volatile boolean reverseSyntax = false;
     private volatile boolean tabScanEnabled = true;
+    private static final int MAX_SUBDIVISION_DEPTH = 3;
+    private volatile boolean dynamicSubdivisionEnabled = true;
+    private volatile int subdivisionsProcessed = 0;
+    private volatile int capHitsDetected = 0;
+    private volatile int depthLimitHits = 0;
     private volatile long paymentDelay = 1000;
     private volatile Thread paymentWorkerThread = null;
     
@@ -131,6 +170,16 @@ public class PayManager {
     public boolean isPaused() { return isPaused; }
     public float getScanProgress() { return scanProgress; }
     public float getPaymentProgress() { return paymentProgress; }
+    
+    private void updateScanProgress(int initialScanned) {
+        int processed = initialScanned + subdivisionsProcessed;
+        int remaining = subdivisionQueue.size();
+        int total = SCAN_PREFIXES.length + subdivisionsProcessed + remaining;
+        if (total > 0) {
+            scanProgress = (float) processed / total;
+        }
+    }
+    
     public String getLastPaymentLog() { return lastPaymentLog; }
     public List<String> getPaymentLogs() { synchronized (paymentLogs) { return new ArrayList<>(paymentLogs); } }
     
@@ -202,10 +251,16 @@ public class PayManager {
     public void setDoubleSendDelay(long delayMs) { this.doubleSendDelay = Math.max(0, Math.min(delayMs, 10000)); }
     public void setReverseSyntax(boolean enabled) { this.reverseSyntax = enabled; }
     public void setTabScanEnabled(boolean enabled) { this.tabScanEnabled = enabled; }
+    public int getMaxSubdivisionDepth() { return MAX_SUBDIVISION_DEPTH; }
+    public boolean isDynamicSubdivisionEnabled() { return dynamicSubdivisionEnabled; }
+    public void setDynamicSubdivisionEnabled(boolean enabled) { this.dynamicSubdivisionEnabled = enabled; }
+    public int getSubdivisionsProcessed() { return subdivisionsProcessed; }
+    public int getCapHitsDetected() { return capHitsDetected; }
+    public int getDepthLimitHits() { return depthLimitHits; }
     public long getPaymentDelay() { return paymentDelay; }
     public void setPaymentDelay(long delayMs) { this.paymentDelay = Math.max(0, Math.min(delayMs, 60000)); }
     public long getScanInterval() { return scanInterval; }
-    public void setScanInterval(long intervalMs) { this.scanInterval = Math.max(50, Math.min(intervalMs, 10000)); }
+    public void setScanInterval(long intervalMs) { this.scanInterval = Math.max(1, Math.min(intervalMs, 10000)); }
 
     public boolean stopTabScan() {
         if (isTabScanning) {
@@ -213,7 +268,7 @@ public class PayManager {
             isPaused = false;
             isTabScanning = false;
             scanCompleted = true;
-            synchronized (playerListLock) { tabScanPlayerList.clear(); }
+            synchronized (playerListLock) { tabScanPlayerList.clear(); seenPlayers.clear(); }
             scanProgress = 0.0f;
             pendingAmount = null;
             pendingAutoMode = false;
@@ -310,13 +365,13 @@ public class PayManager {
     }
 
     public void clearTabScanList() {
-        synchronized (playerListLock) { tabScanPlayerList.clear(); }
+        synchronized (playerListLock) { tabScanPlayerList.clear(); seenPlayers.clear(); }
         scanCompleted = false;
         scanProgress = 0.0f;
     }
     
     public void clearAllPlayerLists() {
-        synchronized (playerListLock) { manualPlayerList.clear(); tabScanPlayerList.clear(); }
+        synchronized (playerListLock) { manualPlayerList.clear(); tabScanPlayerList.clear(); seenPlayers.clear(); }
         excludedPlayers.clear();
         lastDiscoveryMethod = "tab list";
         pendingAmount = null;
@@ -329,6 +384,7 @@ public class PayManager {
         doubleSendDelay = 1000;
         reverseSyntax = false;
         tabScanEnabled = true;
+        dynamicSubdivisionEnabled = true;
         payCommand = "pay";
         debugMode = false;
         scanInterval = 50;
@@ -337,7 +393,7 @@ public class PayManager {
     }
 
     public void resetAllSettings() {
-        synchronized (playerListLock) { manualPlayerList.clear(); tabScanPlayerList.clear(); }
+        synchronized (playerListLock) { manualPlayerList.clear(); tabScanPlayerList.clear(); seenPlayers.clear(); }
         excludedPlayers.clear();
         processedRequestIds.clear();
         synchronized (paymentLock) { isPaying = false; }
@@ -372,12 +428,21 @@ public class PayManager {
         scanCompleted = false;
         scanProgress = 0.0f;
         processedRequestIds.clear();
-        synchronized (playerListLock) { tabScanPlayerList.clear(); }
+        synchronized (playerListLock) { tabScanPlayerList.clear(); seenPlayers.clear(); }
+        subdivisionsProcessed = 0;
+        capHitsDetected = 0;
+        depthLimitHits = 0;
+        subdivisionQueue.clear();
+        subdividedPrefixes.clear();
+        subdivisionRequestPrefixes.clear();
         
         clearScanLogs();
-        addScanLog(String.format("Starting scan (%d prefixes, %dms interval)", SCAN_PREFIXES.length, scanInterval));
+        String subStatus = dynamicSubdivisionEnabled ? String.format("enabled, max depth %d", MAX_SUBDIVISION_DEPTH) : "disabled";
+        addScanLog(String.format("Starting scan (%d prefixes, %dms interval, subdivision: %s)", 
+            SCAN_PREFIXES.length, scanInterval, subStatus));
         if (debugMode) {
-            PayEveryone.LOGGER.info("Starting tab scan ({} prefixes, {}ms interval)", SCAN_PREFIXES.length, scanInterval);
+            PayEveryone.LOGGER.info("Starting tab scan ({} prefixes, {}ms interval, subdivision: {})", 
+                SCAN_PREFIXES.length, scanInterval, subStatus);
         }
         
         CompletableFuture.runAsync(this::runSequentialScan).exceptionally(t -> {
@@ -412,11 +477,75 @@ public class PayManager {
                 }
             });
             
-            scanProgress = (float)(i + 1) / SCAN_PREFIXES.length;
+            updateScanProgress(i + 1);
             
             try { Thread.sleep(scanInterval); } catch (InterruptedException e) { Thread.currentThread().interrupt(); break; }
         }
+        
+        // Process subdivision queue
+        processSubdivisionQueue();
+        
         finishScan();
+    }
+
+    private void processSubdivisionQueue() {
+        Minecraft minecraft = Minecraft.getInstance();
+        final String cmd = payCommand;
+        final boolean isReverse = reverseSyntax;
+        Set<String> processedSubdivisions = new HashSet<>();
+        
+        while (!subdivisionQueue.isEmpty() && isTabScanning && !shouldStop) {
+            while (isPaused && isTabScanning && !shouldStop) {
+                try { Thread.sleep(100); } catch (InterruptedException e) { 
+                    Thread.currentThread().interrupt(); 
+                    return; 
+                }
+            }
+            if (shouldStop || !isTabScanning) break;
+            
+            SubdivisionTask task = subdivisionQueue.pollFirst();
+            if (task == null) break;
+            
+            // Skip if already processed (prevents duplicates)
+            if (!processedSubdivisions.add(task.prefix)) continue;
+            
+            // Check depth limit
+            if (task.depth > MAX_SUBDIVISION_DEPTH) {
+                depthLimitHits++;
+                addScanLog(String.format("WARNING: Max subdivision depth (%d) reached for prefix '%s'", 
+                    MAX_SUBDIVISION_DEPTH, task.prefix));
+                PayEveryone.LOGGER.warn("TabScan max subdivision depth reached for prefix: {}", task.prefix);
+                continue;
+            }
+            
+            subdivisionsProcessed++;
+            
+            final String prefix = task.prefix;
+            final int currentDepth = task.depth;
+            
+            // Use dynamic request IDs for subdivisions (20000+ range)
+            int requestId = TAB_SCAN_REQUEST_ID_BASE + SCAN_PREFIXES.length + processedSubdivisions.size();
+            subdivisionRequestPrefixes.put(requestId, prefix);
+            
+            minecraft.execute(() -> {
+                LocalPlayer player = minecraft.player;
+                if (player != null && player.connection != null) {
+                    String command = isReverse ? "/" + cmd + " 1 " + prefix : "/" + cmd + " " + prefix;
+                    player.connection.send(new ServerboundCommandSuggestionPacket(requestId, command));
+                }
+            });
+            
+            if (debugMode) {
+                PayEveryone.LOGGER.debug("Scanning subdivision '{}' at depth {}", prefix, currentDepth);
+            }
+            
+            updateScanProgress(SCAN_PREFIXES.length);
+            
+            try { Thread.sleep(scanInterval); } catch (InterruptedException e) { 
+                Thread.currentThread().interrupt(); 
+                break; 
+            }
+        }
     }
 
     private void finishScan() {
@@ -436,12 +565,40 @@ public class PayManager {
             addScanLog("Scan complete - no players found via command");
         } else {
             lastDiscoveryMethod = "tabscan";
-            addScanLog(String.format("Scan complete - found %d players", totalPlayers));
+            StringBuilder msg = new StringBuilder();
+            msg.append(String.format("Scan complete - found %d players", totalPlayers));
+            
+            // Add subdivision summary if any occurred
+            if (capHitsDetected > 0 || subdivisionsProcessed > 0) {
+                msg.append(String.format(" | %d caps, %d subdivisions", capHitsDetected, subdivisionsProcessed));
+            }
+            if (depthLimitHits > 0) {
+                msg.append(String.format(" | WARNING: %d prefixes hit depth limit", depthLimitHits));
+            }
+            
+            addScanLog(msg.toString());
+            
+            // Log subdivided prefixes list if any occurred
+            if (!subdividedPrefixes.isEmpty()) {
+                String prefixList = String.join(", ", subdividedPrefixes);
+                addScanLog(String.format("Subdivided prefixes: %s (%d total)", prefixList, subdividedPrefixes.size()));
+            }
+            
+            // Log detailed summary in debug mode
+            if (debugMode && (capHitsDetected > 0 || subdivisionsProcessed > 0)) {
+                PayEveryone.LOGGER.info("TabScan subdivision stats: {} cap hits, {} subdivisions processed, {} depth limit hits",
+                    capHitsDetected, subdivisionsProcessed, depthLimitHits);
+                if (!subdividedPrefixes.isEmpty()) {
+                    PayEveryone.LOGGER.debug("Subdivision details: {}", String.join(", ", subdividedPrefixes));
+                    PayEveryone.LOGGER.debug("Total subdivision scans: {}", subdivisionsProcessed);
+                    PayEveryone.LOGGER.debug("Depth limit hits: {}", depthLimitHits);
+                }
+            }
         }
         
         if (debugMode) {
             PayEveryone.LOGGER.info("Tab scan complete. Found {} players via {}", totalPlayers, lastDiscoveryMethod);
-                }
+        }
         
         Runnable callback; synchronized (paymentLock) { callback = pendingConfirmationCallback; pendingConfirmationCallback = null; }
         if (callback != null) { minecraft.execute(callback); return; }
@@ -541,23 +698,74 @@ public class PayManager {
         
         if (!isTabScanning) return;
         
-        boolean isOurRequest = (requestId >= TAB_SCAN_REQUEST_ID_BASE && requestId < TAB_SCAN_REQUEST_ID_BASE + SCAN_PREFIXES.length);
+        // Handle both initial scan requests and subdivision requests
+        boolean isInitialScan = (requestId >= TAB_SCAN_REQUEST_ID_BASE && 
+                                 requestId < TAB_SCAN_REQUEST_ID_BASE + SCAN_PREFIXES.length);
+        boolean isSubdivision = (requestId >= TAB_SCAN_REQUEST_ID_BASE + SCAN_PREFIXES.length);
+        boolean isOurRequest = isInitialScan || isSubdivision;
+        
         if (!isOurRequest || !processedRequestIds.add(requestId)) return;
         
-        int prefixIndex = requestId - TAB_SCAN_REQUEST_ID_BASE;
-        String prefix = (prefixIndex >= 0 && prefixIndex < SCAN_PREFIXES.length) ? SCAN_PREFIXES[prefixIndex] : "?";
+        String prefix;
+        if (isSubdivision) {
+            prefix = subdivisionRequestPrefixes.getOrDefault(requestId, "?");
+        } else {
+            int prefixIndex = requestId - TAB_SCAN_REQUEST_ID_BASE;
+            prefix = (prefixIndex >= 0 && prefixIndex < SCAN_PREFIXES.length) ? SCAN_PREFIXES[prefixIndex] : "?";
+        }
         String prefixDisplay = prefix.isEmpty() ? "(all)" : "'" + prefix + "'";
         
         synchronized (playerListLock) {
             int foundCount = 0;
             for (String suggestion : suggestions) {
                 String cleaned = suggestion.trim().replaceAll("§[0-9a-fk-or]", "");
-                if (isValidPlayerName(cleaned) && !tabScanPlayerList.contains(cleaned)) {
+                if (isValidPlayerName(cleaned) && seenPlayers.add(cleaned)) {
                     tabScanPlayerList.add(cleaned);
                     foundCount++;
         }
             }
-            addScanLog(String.format("Prefix %s: +%d (total: %d)", prefixDisplay, foundCount, tabScanPlayerList.size()));
+            
+            // Log with cap indicator and depth info for subdivisions
+            String depthInfo = isSubdivision ? String.format(" [depth %d]", estimateDepthFromPrefix(prefix)) : "";
+            String capIndicator = (suggestions.size() == CAP_LIMIT) ? " [CAP]" : "";
+            addScanLog(String.format("Prefix %s%s: +%d (total: %d)%s", 
+                prefixDisplay, depthInfo, foundCount, tabScanPlayerList.size(), capIndicator));
+            
+            // Debug mode: log detailed subdivision scan info
+            if (debugMode && isSubdivision) {
+                PayEveryone.LOGGER.debug("Subdivision scan '{}' at depth {} found {} entries", 
+                    prefix, estimateDepthFromPrefix(prefix), foundCount);
+            }
+
+            // Check for 1000-cap - need to subdivide
+            if (suggestions.size() == CAP_LIMIT) {
+                capHitsDetected++;
+                if (!dynamicSubdivisionEnabled) {
+                    addScanLog(String.format("Prefix %s hit cap (%d) but subdivision disabled", 
+                        prefixDisplay, CAP_LIMIT));
+                } else {
+                    // Determine current depth (initial scan = 0, subdivisions start at 1+)
+                    int currentDepth = isSubdivision ? estimateDepthFromPrefix(prefix) : 0;
+                    int nextDepth = currentDepth + 1;
+                    
+                    if (nextDepth <= MAX_SUBDIVISION_DEPTH) {
+                        List<String> subdivisions = generateSubdivisions(prefix);
+                        for (String sub : subdivisions) {
+                            subdivisionQueue.addLast(new SubdivisionTask(sub, nextDepth));
+                        }
+                        // Track this prefix as having been subdivided
+                        subdividedPrefixes.add(prefix);
+                        // Show first few subdivision prefixes for visibility
+                        String prefixSamples = subdivisions.stream().limit(3).collect(java.util.stream.Collectors.joining(", "));
+                        String sampleInfo = subdivisions.size() > 3 ? String.format("... +%d more", subdivisions.size() - 3) : "";
+                        addScanLog(String.format("Prefix %s hit cap (%d), subdividing into %d prefixes (depth %d): [%s%s]", 
+                            prefixDisplay, CAP_LIMIT, subdivisions.size(), nextDepth, prefixSamples, sampleInfo));
+                    } else {
+                        addScanLog(String.format("Prefix %s hit cap at max depth %d - some players may be missed", 
+                            prefixDisplay, MAX_SUBDIVISION_DEPTH));
+                    }
+                }
+            }
         }
     }
 
@@ -796,7 +1004,7 @@ public class PayManager {
                         paymentProgress = 1.0f;
                         addPaymentLog(String.format("Done! Paid %d players", finalTotal));
                         if (isAutoScan) {
-                            synchronized (playerListLock) { tabScanPlayerList.clear(); }
+                            synchronized (playerListLock) { tabScanPlayerList.clear(); seenPlayers.clear(); }
                             isAutoScan = false;
                         }
                 });
@@ -805,7 +1013,7 @@ public class PayManager {
                         synchronized (paymentLock) { isPaying = false; }
                         paymentProgress = 0.0f;
                         if (isAutoScan) {
-                            synchronized (playerListLock) { tabScanPlayerList.clear(); }
+                            synchronized (playerListLock) { tabScanPlayerList.clear(); seenPlayers.clear(); }
                             isAutoScan = false;
                         }
                     });
@@ -961,5 +1169,17 @@ public class PayManager {
                 addScanLog("Import failed: " + e.getMessage());
             }
         }, "PlayerList-Import").start();
+    }
+
+    /**
+     * Represents a subdivision task for scanning when a prefix hits the 1000-entry cap.
+     */
+    private static class SubdivisionTask {
+        final String prefix;
+        final int depth;
+        SubdivisionTask(String prefix, int depth) {
+            this.prefix = prefix;
+            this.depth = depth;
+        }
     }
 }

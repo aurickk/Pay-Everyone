@@ -14,6 +14,7 @@ public class ModConfig {
     private static ModConfig instance;
     
     private boolean guiHidden = false;
+    private boolean dynamicSubdivisionEnabled = true;
     
     private ModConfig() {}
     
@@ -30,6 +31,15 @@ public class ModConfig {
     
     public void setGuiHidden(boolean hidden) {
         this.guiHidden = hidden;
+        save();
+    }
+    
+    public boolean isDynamicSubdivisionEnabled() {
+        return dynamicSubdivisionEnabled;
+    }
+    
+    public void setDynamicSubdivisionEnabled(boolean enabled) {
+        this.dynamicSubdivisionEnabled = enabled;
         save();
     }
     

@@ -111,7 +111,6 @@ public class InputHandler {
         PayEveryoneHud hud = PayEveryoneHud.getInstance();
         double[] scaled = getScaledMousePos(lastMouseX, lastMouseY);
         
-        //? if >=1.21.6 {
         if (mc.screen != null && hud.isInventoryMode()) {
             if (action == GLFW.GLFW_PRESS) {
                 lastButton = button;
@@ -127,7 +126,6 @@ public class InputHandler {
             }
             return false;
         }
-        //?}
         
         if (mc.screen != null) return false;
         if (!hud.shouldCaptureInput()) return false;
@@ -148,14 +146,12 @@ public class InputHandler {
         PayEveryoneHud hud = PayEveryoneHud.getInstance();
         double[] scaled = getScaledMousePos(lastMouseX, lastMouseY);
         
-        //? if >=1.21.6 {
         if (mc.screen != null && hud.isInventoryMode()) {
             if (hud.handleInventoryScroll(scaled[0], scaled[1], yOffset)) {
                 return true;
             }
             return false;
         }
-        //?}
         
         if (mc.screen != null) return false;
         if (!hud.shouldCaptureInput()) return false;
@@ -197,7 +193,6 @@ public class InputHandler {
             } catch (Throwable ignored) {}
         }
         
-        //? if >=1.21.6 {
         if (mc.screen != null && hud.isInventoryMode()) {
             if (key == GLFW.GLFW_KEY_ESCAPE && PayManager.getInstance().isTabScanning()) {
                 return true;
@@ -209,7 +204,6 @@ public class InputHandler {
             }
             return false;
         }
-        //?}
 
         if (mc.screen != null) return false;
         if (!hud.shouldCaptureInput()) return false;
@@ -254,14 +248,12 @@ public class InputHandler {
         Minecraft mc = Minecraft.getInstance();
         PayEveryoneHud hud = PayEveryoneHud.getInstance();
         
-        //? if >=1.21.6 {
         if (mc.screen != null && hud.isInventoryMode()) {
             if (hud.handleInventoryChar((char) codepoint, 0)) {
                 return true;
             }
             return false;
         }
-        //?}
 
         if (mc.screen != null) return false;
         if (!hud.shouldCaptureInput()) return false;
@@ -279,7 +271,6 @@ public class InputHandler {
         Minecraft mc = Minecraft.getInstance();
         PayEveryoneHud hud = PayEveryoneHud.getInstance();
         
-        //? if >=1.21.6 {
         if (mc.screen != null && hud.isInventoryMode()) {
             if (lastButton >= 0) {
                 double[] scaled = getScaledMousePos(xpos, ypos);
@@ -291,7 +282,6 @@ public class InputHandler {
             }
             return false;
         }
-        //?}
 
         if (mc.screen != null) return false;
         if (!hud.shouldCaptureInput()) return false;

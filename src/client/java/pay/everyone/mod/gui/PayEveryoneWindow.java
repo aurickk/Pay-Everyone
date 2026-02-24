@@ -3,6 +3,7 @@ package pay.everyone.mod.gui;
 import net.fabricmc.loader.api.FabricLoader;
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.gui.GuiGraphics;
+import pay.everyone.mod.ModConfig;
 import pay.everyone.mod.PayEveryoneClient;
 import pay.everyone.mod.PayManager;
 import pay.everyone.mod.compat.RenderHelper;
@@ -63,6 +64,7 @@ public class PayEveryoneWindow {
     private CheckboxWidget autoConfirmCheckbox;
     private TextFieldWidget confirmSlotField;
     private SliderWidget confirmDelaySlider;
+    private CheckboxWidget dynamicSubdivisionCheckbox;
     
     private TextFieldWidget addPlayerField;
     private TextFieldWidget excludePlayerField;
@@ -251,11 +253,11 @@ public class PayEveryoneWindow {
         LabelWidget sep3 = new LabelWidget(0, 0, cw, "--- Keybinds ---");
         sep3.setColor(Theme.TEXT_SECONDARY);
         sep3.setCentered(true);
-        addWidget(settingsTabWidgets, sep3, 8, cy + 212);
+        addWidget(settingsTabWidgets, sep3, 8, cy + 204);
 
         KeybindWidget cancelKeybind = new KeybindWidget(0, 0, cw, 18, "Force Stop:",
             PayEveryoneClient.getCancelPaymentKey());
-        addWidget(settingsTabWidgets, cancelKeybind, 8, cy + 226);
+        addWidget(settingsTabWidgets, cancelKeybind, 8, cy + 218);
 
         ButtonWidget resetBtn = new ButtonWidget(0, 0, cw, 20, "Reset Settings", () -> {
             payManager.resetSettingsOnly();
@@ -265,7 +267,7 @@ public class PayEveryoneWindow {
             payManager.clearExclusions();
             refreshSettings();
         });
-        addWidget(settingsTabWidgets, resetBtn, 8, cy + 248);
+        addWidget(settingsTabWidgets, resetBtn, 8, cy + 240);
     }
     
     private void initPlayersTab() {
@@ -352,7 +354,7 @@ public class PayEveryoneWindow {
         int cw = width - 16;
         
         scanIntervalSlider = new SliderWidget(0, 0, cw, "Scan interval", 
-            payManager.getScanInterval(), 25, 2000, 25, payManager::setScanInterval);
+            payManager.getScanInterval(), 1, 2000, 1, payManager::setScanInterval);
         scanIntervalSlider.setSuffix("ms");
         addWidget(scanTabWidgets, scanIntervalSlider, 8, cy);
         
@@ -380,18 +382,25 @@ public class PayEveryoneWindow {
         ButtonWidget importButton = new ButtonWidget(0, 0, halfBtnW, 20, "Import", payManager::importPlayerList);
         addWidget(scanTabWidgets, importButton, 8 + halfBtnW + 4, cy + 56);
         
+        dynamicSubdivisionCheckbox = new CheckboxWidget(0, 0, cw, "Dynamic Subdivision", 
+            payManager.isDynamicSubdivisionEnabled(), enabled -> {
+                payManager.setDynamicSubdivisionEnabled(enabled);
+                ModConfig.getInstance().setDynamicSubdivisionEnabled(enabled);
+            });
+        addWidget(scanTabWidgets, dynamicSubdivisionCheckbox, 8, cy + 88);
+        
         scanProgressBar = new ProgressBarWidget(0, 0, cw, "Scan");
-        addWidget(scanTabWidgets, scanProgressBar, 8, cy + 84);
+        addWidget(scanTabWidgets, scanProgressBar, 8, cy + 112);
         
         LabelWidget scanLogLabel = new LabelWidget(0, 0, cw, "Scan Log:");
         scanLogLabel.setColor(Theme.TEXT_SECONDARY);
-        addWidget(scanTabWidgets, scanLogLabel, 8, cy + 114);
+        addWidget(scanTabWidgets, scanLogLabel, 8, cy + 138);
         
-        scanLogList = new PlayerListWidget(0, 0, cw, 126, "");
+        scanLogList = new PlayerListWidget(0, 0, cw, 141, "");
         scanLogList.setPlayerProvider(payManager::getScanLogs);
         scanLogList.setAutoScroll(true);
         scanLogList.setShowCount(false);
-        addWidget(scanTabWidgets, scanLogList, 8, cy + 126);
+        addWidget(scanTabWidgets, scanLogList, 8, cy + 138);
     }
     
     private List<String> getTablistPlayerNames() {
@@ -468,6 +477,7 @@ public class PayEveryoneWindow {
         amountField.setText("");
         tabScanEnabledCheckbox.setChecked(payManager.isTabScanEnabled());
         delaySlider.setValue(payManager.getPaymentDelay());
+        dynamicSubdivisionCheckbox.setChecked(payManager.isDynamicSubdivisionEnabled());
     }
     
     private List<WidgetData> getActiveWidgets() {

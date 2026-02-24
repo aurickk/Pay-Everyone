@@ -28,6 +28,9 @@ public class PayEveryoneClient implements ClientModInitializer {
 	public void onInitializeClient() {
 		PayManager.getInstance().clearAllPlayerLists();
 		
+		ModConfig config = ModConfig.getInstance();
+		PayManager.getInstance().setDynamicSubdivisionEnabled(config.isDynamicSubdivisionEnabled());
+		
 		cancelPaymentKey = KeyBindingHelper.registerKeyBinding(VersionCompat.createKeyMapping(
 			"key.payeveryone.cancel_payment",
 			InputConstants.Type.KEYSYM,
