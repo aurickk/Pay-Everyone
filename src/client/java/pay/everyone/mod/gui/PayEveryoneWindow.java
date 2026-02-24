@@ -411,25 +411,27 @@ public class PayEveryoneWindow {
     
     private List<String> getFilteredOnlinePlayers() {
         List<String> source = getTablistPlayerNames();
-        if (playerSearchFilter.isEmpty()) return source;
-        
-        List<String> startsWith = new ArrayList<>();
-        List<String> contains = new ArrayList<>();
+        List<String> filtered = new ArrayList<>();
         
         for (String p : source) {
+            if (payManager.isExcluded(p)) continue;
+            if (playerSearchFilter.isEmpty()) {
+                filtered.add(p);
+                continue;
+            }
+            
             String lower = p.toLowerCase();
             String searchableName = lower.startsWith(".") ? lower.substring(1) : lower;
             String searchableFilter = playerSearchFilter.startsWith(".") ? playerSearchFilter.substring(1) : playerSearchFilter;
             
             if (lower.startsWith(playerSearchFilter) || searchableName.startsWith(searchableFilter)) {
-                startsWith.add(p);
+                filtered.add(p);
             } else if (lower.contains(playerSearchFilter)) {
-                contains.add(p);
+                filtered.add(p);
             }
         }
         
-        startsWith.addAll(contains);
-        return startsWith;
+        return filtered;
     }
     
     private void onStartClicked() {
@@ -566,9 +568,11 @@ public class PayEveryoneWindow {
         
         int hideX = pinX - 16;
         int hideY = oy + 2;
-        int hideBg = isMouseOverHideScaled(scaledMouseX, scaledMouseY) ? Theme.BG_HOVER : Theme.BG_TERTIARY;
-        RenderHelper.fill(graphics, hideX, hideY, hideX + 12, hideY + 12, hideBg);
-        RenderHelper.fill(graphics, hideX + 3, hideY + 5, hideX + 9, hideY + 7, Theme.TEXT_SECONDARY);
+        if (!payManager.isTabScanning()) {
+            int hideBg = isMouseOverHideScaled(scaledMouseX, scaledMouseY) ? Theme.BG_HOVER : Theme.BG_TERTIARY;
+            RenderHelper.fill(graphics, hideX, hideY, hideX + 12, hideY + 12, hideBg);
+            RenderHelper.fill(graphics, hideX + 3, hideY + 5, hideX + 9, hideY + 7, Theme.TEXT_SECONDARY);
+        }
         
         if (pinned) {
             String pinnedText = "Pinned";
@@ -770,7 +774,7 @@ public class PayEveryoneWindow {
         
         int hideX = pinX - 16;
         int hideY = 2;
-        if (scaledX >= hideX && scaledX < hideX + 12 && scaledY >= hideY && scaledY < hideY + 12) {
+        if (!payManager.isTabScanning() && scaledX >= hideX && scaledX < hideX + 12 && scaledY >= hideY && scaledY < hideY + 12) {
             PayEveryoneHud.getInstance().setManuallyHidden(true);
             Minecraft mc = Minecraft.getInstance();
             if (mc.player != null) {
