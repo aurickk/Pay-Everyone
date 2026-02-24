@@ -36,20 +36,10 @@ public class PayManager {
         "0", "1", "2", "3", "4", "5", "6", "7", "8", "9", "_", ".",
     };
 
-    private static final String[] SUBDIVISION_CHARS = {
-        "a", "b", "c", "d", "e", "f", "g", "h", "i", "j", "k", "l", "m",
-        "n", "o", "p", "q", "r", "s", "t", "u", "v", "w", "x", "y", "z",
-        "0", "1", "2", "3", "4", "5", "6", "7", "8", "9", "_", "."
-    };
-
-    /**
-     * Generate subdivision prefixes for a capped prefix.
-     * E.g., "A" -> ["Aa", "Ab", "Ac", ...]
-     */
     private static List<String> generateSubdivisions(String prefix) {
         List<String> subdivisions = new ArrayList<>();
-        for (String c : SUBDIVISION_CHARS) {
-            subdivisions.add(prefix + c);
+        for (int i = 1; i < SCAN_PREFIXES.length; i++) {
+            subdivisions.add(prefix + SCAN_PREFIXES[i]);
         }
         return subdivisions;
     }

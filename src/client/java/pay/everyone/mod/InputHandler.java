@@ -114,15 +114,11 @@ public class InputHandler {
         if (mc.screen != null && hud.isInventoryMode()) {
             if (action == GLFW.GLFW_PRESS) {
                 lastButton = button;
-                if (hud.handleInventoryClick(scaled[0], scaled[1], button)) {
-                    return true;
-                }
+                return hud.handleInventoryClick(scaled[0], scaled[1], button);
             } else if (action == GLFW.GLFW_RELEASE) {
-                if (hud.handleInventoryRelease(scaled[0], scaled[1], button)) {
-                    lastButton = -1;
-                    return true;
-                }
+                boolean handled = hud.handleInventoryRelease(scaled[0], scaled[1], button);
                 lastButton = -1;
+                return handled;
             }
             return false;
         }
@@ -147,10 +143,7 @@ public class InputHandler {
         double[] scaled = getScaledMousePos(lastMouseX, lastMouseY);
         
         if (mc.screen != null && hud.isInventoryMode()) {
-            if (hud.handleInventoryScroll(scaled[0], scaled[1], yOffset)) {
-                return true;
-            }
-            return false;
+            return hud.handleInventoryScroll(scaled[0], scaled[1], yOffset);
         }
         
         if (mc.screen != null) return false;
@@ -198,9 +191,7 @@ public class InputHandler {
                 return true;
             }
             if (action == GLFW.GLFW_PRESS || action == GLFW.GLFW_REPEAT) {
-                if (hud.handleInventoryKey(key, scancode, mods)) {
-                    return true;
-                }
+                return hud.handleInventoryKey(key, scancode, mods);
             }
             return false;
         }
@@ -249,10 +240,7 @@ public class InputHandler {
         PayEveryoneHud hud = PayEveryoneHud.getInstance();
         
         if (mc.screen != null && hud.isInventoryMode()) {
-            if (hud.handleInventoryChar((char) codepoint, 0)) {
-                return true;
-            }
-            return false;
+            return hud.handleInventoryChar((char) codepoint, 0);
         }
 
         if (mc.screen != null) return false;
@@ -275,10 +263,8 @@ public class InputHandler {
             if (lastButton >= 0) {
                 double[] scaled = getScaledMousePos(xpos, ypos);
                 double[] prevScaled = getScaledMousePos(prevX, prevY);
-                if (hud.handleInventoryDrag(scaled[0], scaled[1], lastButton,
-                        scaled[0] - prevScaled[0], scaled[1] - prevScaled[1])) {
-                    return true;
-                }
+                return hud.handleInventoryDrag(scaled[0], scaled[1], lastButton,
+                        scaled[0] - prevScaled[0], scaled[1] - prevScaled[1]);
             }
             return false;
         }
