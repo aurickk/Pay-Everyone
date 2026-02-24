@@ -51,7 +51,8 @@ The GUI opens automatically when you open your inventory. Use the minimize butto
 
 Discovers players on large servers by querying the server's `/pay` command autocomplete.
 
-- **Scan Interval** — Delay between queries (default: 50ms)
+- **Scan Interval** — Delay between queries (default: 50ms, min: 1ms)
+- **Dynamic Subdivision** — Detects when a prefix hits the maximum query (1000 players) and automatically queue the prefix to get rescanned. (Theoretical maximum of 2.14 billion player names!) 
 - **Start Scan / Cancel / Clear List** — Control the scan
 - **Export / Import** — Save scanned players to JSON or load from file
 
@@ -99,8 +100,4 @@ Change keybinds in **Options → Controls → Key Binds → Pay Everyone**.
    ./gradlew build
    ```
 
-<<<<<<< HEAD
-Output JARs are in `legacy/build/libs/` (1.21.1 - 1.21.5) and `modern/build/libs/` (1.21.6 - 1.21.11).
-=======
-Output JARs are in `versions/1.21.4/build/libs/` (1.21.1 - 1.21.5) and `versions/1.21.6/build/libs/` (1.21.6 - 1.21.11).
->>>>>>> 230b532 (feat: migrate to stonecutter)
+Output JARs are in `versions/1.21.4/build/libs/` (1.21.1 - 1.21.5), `versions/1.21.6/build/libs/` (1.21.6 - 1.21.8) and `versions/1.21.6/build/libs/` (1.21.9 - 1.21.11).
