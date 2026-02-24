@@ -507,6 +507,15 @@ public class PayEveryoneWindow {
         return cachedVersion;
     }
     
+    private static String getCancelKeyName() {
+        try {
+            if (PayEveryoneClient.getCancelPaymentKey() != null) {
+                return PayEveryoneClient.getCancelPaymentKey().getTranslatedKeyMessage().getString();
+            }
+        } catch (Exception ignored) {}
+        return "J";
+    }
+    
     public void render(GuiGraphics graphics, int mouseX, int mouseY, float delta) {
         if (!visible && !pinned) return;
         
@@ -591,26 +600,14 @@ public class PayEveryoneWindow {
         
         boolean showingWarning = false;
         if (payManager.isTabScanning()) {
-            String cancelKey = "J";
-            try {
-                if (PayEveryoneClient.getCancelPaymentKey() != null) {
-                    cancelKey = PayEveryoneClient.getCancelPaymentKey().getTranslatedKeyMessage().getString();
-                }
-            } catch (Exception ignored) {}
-            String warning = "Movement locked during Tabscan - [" + cancelKey + "] to Cancel";
+            String warning = "Movement locked during Tabscan - [" + getCancelKeyName() + "] to Cancel";
             int warningWidth = mc.font.width(warning);
             int warningX = ox + (BASE_WIDTH - warningWidth) / 2;
             int warningY = oy + BASE_HEIGHT - 14;
-            RenderHelper.drawString(graphics, mc.font, warning, warningX, warningY, 0xFFFF0000, false); // Red
+            RenderHelper.drawString(graphics, mc.font, warning, warningX, warningY, 0xFFFF0000, false);
             showingWarning = true;
         } else if (payManager.isPaying()) {
-            String cancelKey = "J";
-            try {
-                if (PayEveryoneClient.getCancelPaymentKey() != null) {
-                    cancelKey = PayEveryoneClient.getCancelPaymentKey().getTranslatedKeyMessage().getString();
-                }
-            } catch (Exception ignored) {}
-            String warning = "[" + cancelKey + "] to Cancel";
+            String warning = "[" + getCancelKeyName() + "] to Cancel";
             int warningWidth = mc.font.width(warning);
             int warningX = ox + (BASE_WIDTH - warningWidth) / 2;
             int warningY = oy + BASE_HEIGHT - 14;

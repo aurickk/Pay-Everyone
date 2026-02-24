@@ -14,15 +14,8 @@ import pay.everyone.mod.gui.PayEveryoneHud;
 
 public class PayEveryoneClient implements ClientModInitializer {
 	private static KeyMapping cancelPaymentKey;
-	private static boolean cancelWasDown = false;
 	
 	public static KeyMapping getCancelPaymentKey() { return cancelPaymentKey; }
-	
-	private static boolean isCancelKeyDown() {
-		long window = GLFW.glfwGetCurrentContext();
-		if (window == 0) return false;
-		return GLFW.glfwGetKey(window, GLFW.GLFW_KEY_K) == GLFW.GLFW_PRESS;
-	}
 	
 	@Override
 	public void onInitializeClient() {
@@ -50,12 +43,7 @@ public class PayEveryoneClient implements ClientModInitializer {
 
 			boolean textFieldFocused = PayEveryoneHud.getInstance().getWindow().hasFocusedTextField();
 			
-			boolean down = isCancelKeyDown();
-			boolean pressed = down && !cancelWasDown && !textFieldFocused;
-			cancelWasDown = down;
-			
-			while (cancelPaymentKey.consumeClick() || pressed) {
-				pressed = false;
+			while (cancelPaymentKey.consumeClick()) {
 				if (textFieldFocused) continue;
 				PayManager pm = PayManager.getInstance();
 				if (pm.isPaying() || pm.isTabScanning()) {

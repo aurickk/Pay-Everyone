@@ -222,17 +222,5 @@ public class PayEveryoneHud {
     public PayEveryoneWindow getWindow() {
         return window;
     }
-    
-    private void releaseAllKeys(Minecraft mc) {
-        try {
-            KeyMapping.releaseAll();
-        } catch (Exception ignored) {
-            try {
-                for (KeyMapping key : mc.options.keyMappings) {
-                    key.setDown(false);
-                }
-            } catch (Exception e2) {}
-        }
-    }
 }
 
