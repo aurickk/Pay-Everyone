@@ -23,7 +23,7 @@ A GUI that automatically opens with your inventory to pay all online players wit
 
 1. Install [Fabric Loader](https://fabricmc.net/use/) for your Minecraft version
 2. Download the latest [Fabric API](https://modrinth.com/mod/fabric-api) for your Minecraft version
-3. Download the latest `pay-everyone-[minecraft_version]-[version].jar` from the [Releases](https://github.com/aurickk/Pay-Everyone/releases/) page
+3. Download the latest `pay-everyone-[minecraft_version]+[version].jar` from the [Releases](https://github.com/aurickk/Pay-Everyone/releases/) page
 4. Place both mods in your `.minecraft/mods` folder
 5. Launch Minecraft
 
