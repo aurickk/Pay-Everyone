@@ -176,6 +176,7 @@ public class InputHandler {
                         pm.stopPaying();
                         pm.stopTabScan();
                         pm.clearTabScanList();
+                        pm.forceResetRunningState();
                         if (mc.player != null) {
                             mc.player.displayClientMessage(
                                 net.minecraft.network.chat.Component.literal("§e[Pay Everyone] Payment/Scan cancelled via keybind"), false);

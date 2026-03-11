@@ -441,12 +441,14 @@ public class PayEveryoneWindow {
             errorDisplayUntil = System.currentTimeMillis() + 3000;
             return;
         }
-        
+
         payManager.clearPaymentLogs();
-        
+
         boolean auto = autoModeCheckbox.isChecked();
         long delay = payManager.getPaymentDelay();
-        payManager.payAll(amount, delay, auto);
+        if (!payManager.payAll(amount, delay, auto)) {
+            errorDisplayUntil = System.currentTimeMillis() + 3000;
+        }
     }
     
     private void onPauseClicked() {
@@ -459,6 +461,8 @@ public class PayEveryoneWindow {
         payManager.stopPaying();
         payManager.stopTabScan();
         payManager.clearTabScanList();
+        // Force-reset state in case something got stuck
+        payManager.forceResetRunningState();
     }
     
     private void onStartScanClicked() {

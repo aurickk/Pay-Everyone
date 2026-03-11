@@ -539,7 +539,8 @@ public class PayManager {
     }
 
     private void finishScan() {
-        synchronized (scanLock) { 
+        if (shouldStop) return;
+        synchronized (scanLock) {
             if (scanCompleted) return;
             scanCompleted = true;
         }
@@ -591,9 +592,9 @@ public class PayManager {
         }
         
         Runnable callback; synchronized (paymentLock) { callback = pendingConfirmationCallback; pendingConfirmationCallback = null; }
-        if (callback != null) { minecraft.execute(callback); return; }
-        
-        if (pendingAmount != null) {
+        if (callback != null && !shouldStop) { minecraft.execute(callback); return; }
+
+        if (pendingAmount != null && !shouldStop) {
             String amount = pendingAmount; long delay = pendingDelay; boolean autoMode = pendingAutoMode;
             pendingAmount = null; pendingAutoMode = false;
             minecraft.execute(() -> payAll(amount, delay, autoMode));
@@ -862,28 +863,9 @@ public class PayManager {
             return false;
         }
 
-        boolean hasTabScanResults;
-        synchronized (playerListLock) { hasTabScanResults = !tabScanPlayerList.isEmpty(); }
-        if (tabScanEnabled && !scanCompleted && !isTabScanning && !hasTabScanResults) {
-            pendingAmount = amountOrRange;
-            pendingDelay = delayMs;
-            pendingAutoMode = autoMode;
-            addPaymentLog("Starting TabScan first...");
-            queryPlayersViaTabComplete(scanInterval, true);
-            return true;
-        }
-
-        List<String> playersToPay = new ArrayList<>(getOnlinePlayers());
-        if (playersToPay.isEmpty()) {
-            lastError = "No players to pay";
-            return false;
-        }
-        
-        Collections.shuffle(playersToPay);
-
         boolean isRange = amountOrRange.contains("-");
         long parsedMinAmount = 0, parsedMaxAmount = 0;
-        
+
         if (isRange) {
             String[] parts = amountOrRange.split("-");
             if (parts.length != 2) {
@@ -914,7 +896,26 @@ public class PayManager {
                 return false;
             }
         }
-        
+
+        boolean hasTabScanResults;
+        synchronized (playerListLock) { hasTabScanResults = !tabScanPlayerList.isEmpty(); }
+        if (tabScanEnabled && !scanCompleted && !isTabScanning && !hasTabScanResults) {
+            pendingAmount = amountOrRange;
+            pendingDelay = delayMs;
+            pendingAutoMode = autoMode;
+            addPaymentLog("Starting TabScan first...");
+            queryPlayersViaTabComplete(scanInterval, true);
+            return true;
+        }
+
+        List<String> playersToPay = new ArrayList<>(getOnlinePlayers());
+        if (playersToPay.isEmpty()) {
+            lastError = "No players to pay";
+            return false;
+        }
+
+        Collections.shuffle(playersToPay);
+
         int playerCount = playersToPay.size();
         if (autoMode) {
             parsedMinAmount = Math.max(1, parsedMinAmount / playerCount);
@@ -945,7 +946,7 @@ public class PayManager {
             try {
                 for (int i = 0; i < totalPlayers; i++) {
                     while (isPaused && !shouldStop) {
-                        try { Thread.sleep(100); } catch (InterruptedException e) { Thread.currentThread().interrupt(); return; }
+                        try { Thread.sleep(100); } catch (InterruptedException e) { Thread.currentThread().interrupt(); break; }
                     }
                     
                 if (shouldStop) {
@@ -989,36 +990,35 @@ public class PayManager {
 
             if (!shouldStop) {
                     final int finalTotal = totalPlayers;
-                minecraft.execute(() -> {
-                        synchronized (paymentLock) { isPaying = false; }
-                        paymentProgress = 1.0f;
-                        addPaymentLog(String.format("Done! Paid %d players", finalTotal));
-                        if (isAutoScan) {
-                            synchronized (playerListLock) { tabScanPlayerList.clear(); seenPlayers.clear(); }
-                            isAutoScan = false;
-                        }
-                });
+                    paymentProgress = 1.0f;
+                    addPaymentLog(String.format("Done! Paid %d players", finalTotal));
+                    if (isAutoScan) {
+                        synchronized (playerListLock) { tabScanPlayerList.clear(); seenPlayers.clear(); }
+                        isAutoScan = false;
+                    }
             } else {
-                    minecraft.execute(() -> { 
-                        synchronized (paymentLock) { isPaying = false; }
-                        paymentProgress = 0.0f;
-                        if (isAutoScan) {
-                            synchronized (playerListLock) { tabScanPlayerList.clear(); seenPlayers.clear(); }
-                            isAutoScan = false;
-                        }
-                    });
+                    paymentProgress = 0.0f;
+                    if (isAutoScan) {
+                        synchronized (playerListLock) { tabScanPlayerList.clear(); seenPlayers.clear(); }
+                        isAutoScan = false;
+                    }
                 }
             } catch (Exception e) {
                 PayEveryone.LOGGER.error("Payment failed", e);
                 addPaymentLog("Error: Payment failed");
-                minecraft.execute(() -> { synchronized (paymentLock) { isPaying = false; } paymentProgress = 0.0f; });
+                synchronized (paymentLock) { isPaying = false; }
+                paymentProgress = 0.0f;
             } finally {
+                // Always ensure isPaying is reset, even if the thread was interrupted
+                // and returned early (e.g., from the pause-wait loop at line 948).
+                synchronized (paymentLock) { isPaying = false; }
                 paymentWorkerThread = null;
             }
         }).exceptionally(t -> {
             PayEveryone.LOGGER.error("Payment async task failed", t);
             addPaymentLog("Error: Async task failed");
-            Minecraft.getInstance().execute(() -> { synchronized (paymentLock) { isPaying = false; } paymentProgress = 0.0f; });
+            synchronized (paymentLock) { isPaying = false; }
+            paymentProgress = 0.0f;
             paymentWorkerThread = null;
             return null;
         });
@@ -1027,20 +1027,44 @@ public class PayManager {
     }
 
     public void stopPaying() {
-        if ((isPaying || isPaused) && !shouldStop) {
-            addPaymentLog("Cancelled");
+        if (isPaying || isPaused) {
+            if (!shouldStop) {
+                addPaymentLog("Cancelled");
+            }
             shouldStop = true;
             isPaused = false;
             Thread t = paymentWorkerThread;
             if (t != null) {
                 try { t.interrupt(); } catch (Throwable ignored) {}
             }
+            // Directly reset payment state to prevent permanent GUI freeze.
+            // The worker thread also resets this, but if it was interrupted mid-return
+            // or failed to schedule the reset on the main thread, this ensures recovery.
+            synchronized (paymentLock) { isPaying = false; }
+            paymentProgress = 0.0f;
             if (debugMode) {
                 PayEveryone.LOGGER.info("Payment stopped by user");
             }
         }
     }
     
+    /**
+     * Force-resets all running state flags. Used as a failsafe when the cancel button
+     * is clicked to ensure the GUI never gets permanently stuck in a "running" state.
+     */
+    public void forceResetRunningState() {
+        synchronized (paymentLock) { isPaying = false; }
+        isPaused = false;
+        isTabScanning = false;
+        paymentProgress = 0.0f;
+        scanProgress = 0.0f;
+        synchronized (scanLock) { scanCompleted = false; }
+        pendingAmount = null;
+        pendingAutoMode = false;
+        pendingConfirmationCallback = null;
+        paymentWorkerThread = null;
+    }
+
     public boolean isAutoConfirmEnabled() { return confirmClickSlot >= 0 && isPaying; }
     
     public void handleContainerOpened(int containerId) {
