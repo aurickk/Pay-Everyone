@@ -46,8 +46,8 @@ public class PayEveryoneHud {
         if (window.isPinned()) {
             int scaledWidth = mc.getWindow().getGuiScaledWidth();
             int scaledHeight = mc.getWindow().getGuiScaledHeight();
-            int windowWidth = mc.getWindow().getWidth();
-            int windowHeight = mc.getWindow().getHeight();
+            int windowWidth = mc.getWindow().getScreenWidth();
+            int windowHeight = mc.getWindow().getScreenHeight();
             long handle = GLFW.glfwGetCurrentContext();
             int cursorMode = GLFW.glfwGetInputMode(handle, GLFW.GLFW_CURSOR);
             final int mouseX;

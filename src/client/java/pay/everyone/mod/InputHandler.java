@@ -101,8 +101,8 @@ public class InputHandler {
         Minecraft mc = Minecraft.getInstance();
         if (mc.getWindow() == null) return new double[]{rawX, rawY};
         
-        double scaledX = rawX * mc.getWindow().getGuiScaledWidth() / mc.getWindow().getWidth();
-        double scaledY = rawY * mc.getWindow().getGuiScaledHeight() / mc.getWindow().getHeight();
+        double scaledX = rawX * mc.getWindow().getGuiScaledWidth() / mc.getWindow().getScreenWidth();
+        double scaledY = rawY * mc.getWindow().getGuiScaledHeight() / mc.getWindow().getScreenHeight();
         return new double[]{scaledX, scaledY};
     }
     
