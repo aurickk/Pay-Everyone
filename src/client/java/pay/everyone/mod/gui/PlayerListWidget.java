@@ -1,7 +1,11 @@
 package pay.everyone.mod.gui;
 
 import net.minecraft.client.Minecraft;
+//? if >=26.1 {
+/*import net.minecraft.client.gui.GuiGraphicsExtractor;*/
+//?} else {
 import net.minecraft.client.gui.GuiGraphics;
+//?}
 import pay.everyone.mod.compat.RenderHelper;
 
 import java.util.ArrayList;
@@ -46,40 +50,48 @@ public class PlayerListWidget extends Widget {
         }
     }
     
+    //? if >=26.1 {
+    /*@Override
+    public void render(GuiGraphicsExtractor graphics, int mouseX, int mouseY, float delta) {
+        renderImpl(graphics, mouseX, mouseY, delta);
+    }
+    private void renderImpl(GuiGraphicsExtractor graphics, int mouseX, int mouseY, float delta) {
+    *///?} else {
     @Override
     public void render(GuiGraphics graphics, int mouseX, int mouseY, float delta) {
+    //?}
         if (!visible) return;
-        
+
         int listHeight = height - 12;
         int maxVisible = (listHeight - 2) / ITEM_HEIGHT;
-        
+
         int maxScroll = Math.max(0, players.size() - maxVisible);
         if (scrollOffset > maxScroll) {
             scrollOffset = maxScroll;
         }
-        
+
         if (autoScroll && players.size() > lastPlayerCount) {
             scrollOffset = maxScroll;
         }
         lastPlayerCount = players.size();
-        
+
         var font = Minecraft.getInstance().font;
-        
+
         String displayTitle = showCount ? title + " (" + players.size() + ")" : title;
         if (!displayTitle.isEmpty()) {
             RenderHelper.drawString(graphics, font, displayTitle, x, y, Theme.TEXT_PRIMARY, false);
         }
-        
+
         int listY = y + 12;
-        
+
         RenderHelper.fill(graphics, x, listY, x + width, listY + listHeight, Theme.BG_TERTIARY);
         RenderHelper.drawBorder(graphics, x, listY, x + width, listY + listHeight, Theme.BORDER);
-        
+
         int scissorX1 = toScreenX(x + 1);
         int scissorY1 = toScreenY(listY + 1);
         int scissorX2 = toScreenX(x + width - 1);
         int scissorY2 = toScreenY(listY + listHeight - 1);
-        
+
         if (useMatrixScaling) {
             RenderHelper.popPose(graphics);
         }
@@ -89,35 +101,35 @@ public class PlayerListWidget extends Widget {
             RenderHelper.translate(graphics, screenOffsetX, screenOffsetY, 0);
             RenderHelper.scale(graphics, screenScale, screenScale, 1.0f);
         }
-        
+
         for (int i = 0; i < Math.min(players.size() - scrollOffset, maxVisible); i++) {
             int index = i + scrollOffset;
             int itemY = listY + 2 + i * ITEM_HEIGHT;
-            
-            boolean isHovered = mouseX >= x + 1 && mouseX < x + width - 1 && 
+
+            boolean isHovered = mouseX >= x + 1 && mouseX < x + width - 1 &&
                                mouseY >= itemY && mouseY < itemY + ITEM_HEIGHT;
             if (isHovered) {
                 RenderHelper.fill(graphics, x + 1, itemY, x + width - 1, itemY + ITEM_HEIGHT, Theme.BG_HOVER);
             }
-            
+
             String playerName = players.get(index);
             int maxNameWidth = onRemove != null ? width - REMOVE_BTN_SIZE - 12 : width - 8;
             while (font.width(playerName) > maxNameWidth && playerName.length() > 1) {
                 playerName = playerName.substring(0, playerName.length() - 1);
             }
             RenderHelper.drawString(graphics, font, playerName, x + 4, itemY + 3, Theme.TEXT_PRIMARY, false);
-            
+
             if (onRemove != null) {
                 int btnX = x + width - REMOVE_BTN_SIZE - 6;
                 int btnY = itemY + (ITEM_HEIGHT - REMOVE_BTN_SIZE) / 2;
-                boolean btnHovered = isHovered && mouseX >= btnX && mouseX < btnX + REMOVE_BTN_SIZE && 
+                boolean btnHovered = isHovered && mouseX >= btnX && mouseX < btnX + REMOVE_BTN_SIZE &&
                                     mouseY >= btnY && mouseY < btnY + REMOVE_BTN_SIZE;
-                
+
                 int btnColor = btnHovered ? Theme.ERROR : Theme.TEXT_SECONDARY;
                 RenderHelper.drawString(graphics, font, "x", btnX + 2, btnY, btnColor, false);
             }
         }
-        
+
         if (useMatrixScaling) {
             RenderHelper.popPose(graphics);
         }
@@ -127,12 +139,12 @@ public class PlayerListWidget extends Widget {
             RenderHelper.translate(graphics, screenOffsetX, screenOffsetY, 0);
             RenderHelper.scale(graphics, screenScale, screenScale, 1.0f);
         }
-        
+
         if (players.size() > maxVisible) {
             int scrollbarHeight = listHeight - 4;
             int thumbHeight = Math.max(20, scrollbarHeight * maxVisible / players.size());
             int thumbY = listY + 2 + (scrollbarHeight - thumbHeight) * scrollOffset / Math.max(1, players.size() - maxVisible);
-            
+
             RenderHelper.fill(graphics, x + width - 4, listY + 2, x + width - 1, listY + listHeight - 2, Theme.SCROLLBAR_BG);
             RenderHelper.fill(graphics, x + width - 4, thumbY, x + width - 1, thumbY + thumbHeight, Theme.SCROLLBAR_THUMB);
         }
@@ -284,24 +296,28 @@ public class PlayerListWidget extends Widget {
     
     public boolean hasContextMenu() { return contextMenuOpen; }
     
+    //? if >=26.1 {
+    /*public void renderContextMenu(GuiGraphicsExtractor graphics, int mouseX, int mouseY) {
+    *///?} else {
     public void renderContextMenu(GuiGraphics graphics, int mouseX, int mouseY) {
+    //?}
         if (!contextMenuOpen || contextMenuPlayer == null) return;
-        
+
         var font = Minecraft.getInstance().font;
         int menuWidth = 70;
         int menuHeight = 18;
-        
+
         RenderHelper.fill(graphics, contextMenuX, contextMenuY, contextMenuX + menuWidth, contextMenuY + menuHeight, Theme.BG_PRIMARY);
         RenderHelper.fill(graphics, contextMenuX, contextMenuY, contextMenuX + menuWidth, contextMenuY + 1, Theme.ERROR);
         RenderHelper.drawBorder(graphics, contextMenuX, contextMenuY, contextMenuX + menuWidth, contextMenuY + menuHeight, Theme.BORDER);
-        
+
         boolean isHovered = mouseX >= contextMenuX && mouseX < contextMenuX + menuWidth &&
             mouseY >= contextMenuY && mouseY < contextMenuY + menuHeight;
-        
+
         if (isHovered) {
             RenderHelper.fill(graphics, contextMenuX + 1, contextMenuY + 1, contextMenuX + menuWidth - 1, contextMenuY + menuHeight - 1, 0x40FF5555);
         }
-        
+
         RenderHelper.drawString(graphics, font, "- Exclude", contextMenuX + 4, contextMenuY + 5, Theme.ERROR, false);
     }
 }

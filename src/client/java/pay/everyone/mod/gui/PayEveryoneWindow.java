@@ -2,7 +2,11 @@ package pay.everyone.mod.gui;
 
 import net.fabricmc.loader.api.FabricLoader;
 import net.minecraft.client.Minecraft;
+//? if >=26.1 {
+/*import net.minecraft.client.gui.GuiGraphicsExtractor;*/
+//?} else {
 import net.minecraft.client.gui.GuiGraphics;
+//?}
 import pay.everyone.mod.ModConfig;
 import pay.everyone.mod.PayEveryoneClient;
 import pay.everyone.mod.PayManager;
@@ -522,7 +526,11 @@ public class PayEveryoneWindow {
         return "J";
     }
     
+    //? if >=26.1 {
+    /*public void render(GuiGraphicsExtractor graphics, int mouseX, int mouseY, float delta) {
+    *///?} else {
     public void render(GuiGraphics graphics, int mouseX, int mouseY, float delta) {
+    //?}
         if (!visible && !pinned) return;
         
         Minecraft mc = Minecraft.getInstance();
@@ -782,9 +790,14 @@ public class PayEveryoneWindow {
             PayEveryoneHud.getInstance().setManuallyHidden(true);
             Minecraft mc = Minecraft.getInstance();
             if (mc.player != null) {
+                //? if >=26.1 {
+                /*mc.player.sendSystemMessage(
+                    net.minecraft.network.chat.Component.literal("§e[Pay Everyone] GUI hidden. Use /payeveryone show to restore."));
+                *///?} else {
                 mc.player.displayClientMessage(
-                    net.minecraft.network.chat.Component.literal("§e[Pay Everyone] GUI hidden. Use /payeveryone show to restore."), 
+                    net.minecraft.network.chat.Component.literal("§e[Pay Everyone] GUI hidden. Use /payeveryone show to restore."),
                     false);
+                //?}
             }
             return true;
         }

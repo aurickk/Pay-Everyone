@@ -661,8 +661,15 @@ public class PayManager {
                 if (debugMode) {
                 minecraft.execute(() -> {
                     LocalPlayer p = minecraft.player;
-                        if (p != null) p.displayClientMessage(net.minecraft.network.chat.Component.literal(
-                            String.format("§6[Pay Everyone] Scanning players via /%s...", payCommand)), false);
+                        if (p != null) {
+                            //? if >=26.1 {
+                            /*p.sendSystemMessage(net.minecraft.network.chat.Component.literal(
+                                String.format("§6[Pay Everyone] Scanning players via /%s...", payCommand)));
+                            *///?} else {
+                            p.displayClientMessage(net.minecraft.network.chat.Component.literal(
+                                String.format("§6[Pay Everyone] Scanning players via /%s...", payCommand)), false);
+                            //?}
+                        }
                 });
                 }
                 pendingConfirmationCallback = onConfirmationReady;
@@ -1081,8 +1088,13 @@ public class PayManager {
                 if (!isAutoConfirmEnabled() || confirmClickSlot != slotToClick) return;
                 LocalPlayer player = minecraft.player;
                 if (player != null && minecraft.gameMode != null) {
-                    minecraft.gameMode.handleInventoryMouseClick(containerId, slotToClick, 0, 
+                    //? if >=26.1 {
+                    /*minecraft.gameMode.handleContainerInput(containerId, slotToClick, 0,
+                        net.minecraft.world.inventory.ContainerInput.PICKUP, player);
+                    *///?} else {
+                    minecraft.gameMode.handleInventoryMouseClick(containerId, slotToClick, 0,
                         net.minecraft.world.inventory.ClickType.PICKUP, player);
+                    //?}
                 }
             });
         });

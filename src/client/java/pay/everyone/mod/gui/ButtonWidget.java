@@ -1,7 +1,11 @@
 package pay.everyone.mod.gui;
 
 import net.minecraft.client.Minecraft;
+//? if >=26.1 {
+/*import net.minecraft.client.gui.GuiGraphicsExtractor;*/
+//?} else {
 import net.minecraft.client.gui.GuiGraphics;
+//?}
 import pay.everyone.mod.compat.RenderHelper;
 
 public class ButtonWidget extends Widget {
@@ -15,11 +19,12 @@ public class ButtonWidget extends Widget {
         this.onClick = onClick;
     }
     
-    @Override
-    public void render(GuiGraphics graphics, int mouseX, int mouseY, float delta) {
+    //? if >=26.1 {
+    /*@Override
+    public void render(GuiGraphicsExtractor graphics, int mouseX, int mouseY, float delta) {
         if (!visible) return;
         updateHovered(mouseX, mouseY);
-        
+
         int bgColor;
         if (!enabled) {
             bgColor = Theme.BG_SECONDARY;
@@ -30,11 +35,11 @@ public class ButtonWidget extends Widget {
         } else {
             bgColor = Theme.BG_TERTIARY;
         }
-        
+
         RenderHelper.fill(graphics, x, y, x + width, y + height, bgColor);
         int borderColor = (hovered && enabled) ? Theme.ACCENT : Theme.BORDER;
         RenderHelper.drawBorder(graphics, x, y, x + width, y + height, borderColor);
-        
+
         int textColor = enabled ? (hovered ? Theme.ACCENT : Theme.TEXT_PRIMARY) : Theme.TEXT_DISABLED;
         var font = Minecraft.getInstance().font;
         int textWidth = font.width(text);
@@ -42,6 +47,35 @@ public class ButtonWidget extends Widget {
         int textY = y + (height - 8) / 2;
         RenderHelper.drawString(graphics, font, text, textX, textY, textColor, false);
     }
+    *///?} else {
+    @Override
+    public void render(GuiGraphics graphics, int mouseX, int mouseY, float delta) {
+        if (!visible) return;
+        updateHovered(mouseX, mouseY);
+
+        int bgColor;
+        if (!enabled) {
+            bgColor = Theme.BG_SECONDARY;
+        } else if (pressed && hovered) {
+            bgColor = Theme.BG_PRESSED;
+        } else if (hovered) {
+            bgColor = Theme.BG_HOVER;
+        } else {
+            bgColor = Theme.BG_TERTIARY;
+        }
+
+        RenderHelper.fill(graphics, x, y, x + width, y + height, bgColor);
+        int borderColor = (hovered && enabled) ? Theme.ACCENT : Theme.BORDER;
+        RenderHelper.drawBorder(graphics, x, y, x + width, y + height, borderColor);
+
+        int textColor = enabled ? (hovered ? Theme.ACCENT : Theme.TEXT_PRIMARY) : Theme.TEXT_DISABLED;
+        var font = Minecraft.getInstance().font;
+        int textWidth = font.width(text);
+        int textX = x + (width - textWidth) / 2;
+        int textY = y + (height - 8) / 2;
+        RenderHelper.drawString(graphics, font, text, textX, textY, textColor, false);
+    }
+    //?}
     
     @Override
     public boolean mouseClicked(double mouseX, double mouseY, int button) {

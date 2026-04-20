@@ -3,7 +3,11 @@ package pay.everyone.mod.gui;
 import com.mojang.blaze3d.platform.InputConstants;
 import net.minecraft.client.KeyMapping;
 import net.minecraft.client.Minecraft;
+//? if >=26.1 {
+/*import net.minecraft.client.gui.GuiGraphicsExtractor;*/
+//?} else {
 import net.minecraft.client.gui.GuiGraphics;
+//?}
 import pay.everyone.mod.compat.RenderHelper;
 
 public class KeybindWidget extends Widget {
@@ -20,18 +24,19 @@ public class KeybindWidget extends Widget {
         this.keyMapping = keyMapping;
     }
     
-    @Override
-    public void render(GuiGraphics graphics, int mouseX, int mouseY, float delta) {
+    //? if >=26.1 {
+    /*@Override
+    public void render(GuiGraphicsExtractor graphics, int mouseX, int mouseY, float delta) {
         if (!visible) return;
         updateHovered(mouseX, mouseY);
-        
+
         var font = Minecraft.getInstance().font;
-        
+
         RenderHelper.drawString(graphics, font, label, x, y + (height - 8) / 2, Theme.TEXT_PRIMARY, false);
-        
+
         int btnX = x + LABEL_WIDTH;
         int btnWidth = width - LABEL_WIDTH;
-        
+
         boolean btnHovered = mouseX >= btnX && mouseX < btnX + btnWidth && mouseY >= y && mouseY < y + height;
         int bgColor;
         if (listening) {
@@ -41,10 +46,10 @@ public class KeybindWidget extends Widget {
         } else {
             bgColor = Theme.BG_TERTIARY;
         }
-        
+
         RenderHelper.fill(graphics, btnX, y, btnX + btnWidth, y + height, bgColor);
         RenderHelper.drawBorder(graphics, btnX, y, btnX + btnWidth, y + height, Theme.BORDER);
-        
+
         String keyText;
         int textColor;
         if (listening) {
@@ -54,12 +59,54 @@ public class KeybindWidget extends Widget {
             keyText = getKeyName();
             textColor = Theme.TEXT_PRIMARY;
         }
-        
+
         int textWidth = font.width(keyText);
         int textX = btnX + (btnWidth - textWidth) / 2;
         int textY = y + (height - 8) / 2;
         RenderHelper.drawString(graphics, font, keyText, textX, textY, textColor, false);
     }
+    *///?} else {
+    @Override
+    public void render(GuiGraphics graphics, int mouseX, int mouseY, float delta) {
+        if (!visible) return;
+        updateHovered(mouseX, mouseY);
+
+        var font = Minecraft.getInstance().font;
+
+        RenderHelper.drawString(graphics, font, label, x, y + (height - 8) / 2, Theme.TEXT_PRIMARY, false);
+
+        int btnX = x + LABEL_WIDTH;
+        int btnWidth = width - LABEL_WIDTH;
+
+        boolean btnHovered = mouseX >= btnX && mouseX < btnX + btnWidth && mouseY >= y && mouseY < y + height;
+        int bgColor;
+        if (listening) {
+            bgColor = Theme.ACCENT;
+        } else if (btnHovered) {
+            bgColor = Theme.BG_HOVER;
+        } else {
+            bgColor = Theme.BG_TERTIARY;
+        }
+
+        RenderHelper.fill(graphics, btnX, y, btnX + btnWidth, y + height, bgColor);
+        RenderHelper.drawBorder(graphics, btnX, y, btnX + btnWidth, y + height, Theme.BORDER);
+
+        String keyText;
+        int textColor;
+        if (listening) {
+            keyText = "> Press key <";
+            textColor = Theme.BG_PRIMARY;
+        } else {
+            keyText = getKeyName();
+            textColor = Theme.TEXT_PRIMARY;
+        }
+
+        int textWidth = font.width(keyText);
+        int textX = btnX + (btnWidth - textWidth) / 2;
+        int textY = y + (height - 8) / 2;
+        RenderHelper.drawString(graphics, font, keyText, textX, textY, textColor, false);
+    }
+    //?}
     
     private String getKeyName() {
         try {

@@ -2,7 +2,11 @@ package pay.everyone.mod.gui;
 
 import net.minecraft.client.KeyMapping;
 import net.minecraft.client.Minecraft;
+//? if >=26.1 {
+/*import net.minecraft.client.gui.GuiGraphicsExtractor;*/
+//?} else {
 import net.minecraft.client.gui.GuiGraphics;
+//?}
 import org.lwjgl.glfw.GLFW;
 import pay.everyone.mod.ModConfig;
 import pay.everyone.mod.compat.RenderHelper;
@@ -37,7 +41,11 @@ public class PayEveryoneHud {
         instance = null;
     }
     
+    //? if >=26.1 {
+    /*public void render(GuiGraphicsExtractor graphics, float tickDelta) {
+    *///?} else {
     public void render(GuiGraphics graphics, float tickDelta) {
+    //?}
         Minecraft mc = Minecraft.getInstance();
         if (mc.player == null) return;
         
@@ -111,6 +119,16 @@ public class PayEveryoneHud {
         hasBeenPositioned = true;
     }
     
+    //? if >=26.1 {
+    /*public void renderInScreen(GuiGraphicsExtractor graphics, int mouseX, int mouseY, float delta) {
+        if (manuallyHidden) return;
+        if (!inventoryMode && !window.isPinned()) return;
+        RenderHelper.pushPose(graphics);
+        RenderHelper.translate(graphics, 0, 0, 500);
+        window.render(graphics, mouseX, mouseY, delta);
+        RenderHelper.popPose(graphics);
+    }
+    *///?} else {
     public void renderInScreen(GuiGraphics graphics, int mouseX, int mouseY, float delta) {
         if (manuallyHidden) return;
         if (!inventoryMode && !window.isPinned()) return;
@@ -119,6 +137,7 @@ public class PayEveryoneHud {
         window.render(graphics, mouseX, mouseY, delta);
         RenderHelper.popPose(graphics);
     }
+    //?}
     
     public boolean handleInventoryClick(double mouseX, double mouseY, int button) {
         if (manuallyHidden) return false;

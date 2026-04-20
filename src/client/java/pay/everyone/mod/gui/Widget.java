@@ -1,6 +1,10 @@
 package pay.everyone.mod.gui;
 
+//? if >=26.1 {
+/*import net.minecraft.client.gui.GuiGraphicsExtractor;*/
+//?} else {
 import net.minecraft.client.gui.GuiGraphics;
+//?}
 
 public abstract class Widget {
     protected int x, y, width, height;
@@ -8,20 +12,24 @@ public abstract class Widget {
     protected boolean enabled = true;
     protected boolean focused = false;
     protected boolean hovered = false;
-    
+
     protected int screenOffsetX = 0;
     protected int screenOffsetY = 0;
     protected float screenScale = 1.0f;
     protected boolean useMatrixScaling = false;
-    
+
     public Widget(int x, int y, int width, int height) {
         this.x = x;
         this.y = y;
         this.width = width;
         this.height = height;
     }
-    
+
+    //? if >=26.1 {
+    /*public abstract void render(GuiGraphicsExtractor graphics, int mouseX, int mouseY, float delta);*/
+    //?} else {
     public abstract void render(GuiGraphics graphics, int mouseX, int mouseY, float delta);
+    //?}
     
     public void setScreenTransform(int offsetX, int offsetY, float scale, boolean useMatrix) {
         this.screenOffsetX = offsetX;

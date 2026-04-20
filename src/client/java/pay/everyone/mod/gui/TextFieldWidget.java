@@ -1,7 +1,11 @@
 package pay.everyone.mod.gui;
 
 import net.minecraft.client.Minecraft;
+//? if >=26.1 {
+/*import net.minecraft.client.gui.GuiGraphicsExtractor;*/
+//?} else {
 import net.minecraft.client.gui.GuiGraphics;
+//?}
 import org.lwjgl.glfw.GLFW;
 import pay.everyone.mod.compat.RenderHelper;
 
@@ -28,8 +32,13 @@ public class TextFieldWidget extends Widget {
         this.hint = hint;
     }
     
+    //? if >=26.1 {
+    /*@Override
+    public void render(GuiGraphicsExtractor graphics, int mouseX, int mouseY, float delta) {
+    *///?} else {
     @Override
     public void render(GuiGraphics graphics, int mouseX, int mouseY, float delta) {
+    //?}
         if (!visible) return;
         updateHovered(mouseX, mouseY);
         
@@ -92,7 +101,11 @@ public class TextFieldWidget extends Widget {
         return sub;
     }
     
+    //? if >=26.1 {
+    /*private void renderSuggestions(GuiGraphicsExtractor graphics, int mouseX, int mouseY) {
+    *///?} else {
     private void renderSuggestions(GuiGraphics graphics, int mouseX, int mouseY) {
+    //?}
         var font = Minecraft.getInstance().font;
         int sugY = y + height;
         int maxVisible = Math.min(suggestions.size(), 5);
@@ -131,7 +144,11 @@ public class TextFieldWidget extends Widget {
         return showSuggestions && !suggestions.isEmpty();
     }
     
+    //? if >=26.1 {
+    /*public void renderSuggestionsOverlay(GuiGraphicsExtractor graphics, int mouseX, int mouseY) {
+    *///?} else {
     public void renderSuggestionsOverlay(GuiGraphics graphics, int mouseX, int mouseY) {
+    //?}
         if (showSuggestions && !suggestions.isEmpty()) {
             renderSuggestions(graphics, mouseX, mouseY);
         }

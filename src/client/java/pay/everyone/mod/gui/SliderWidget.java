@@ -1,7 +1,11 @@
 package pay.everyone.mod.gui;
 
 import net.minecraft.client.Minecraft;
+//? if >=26.1 {
+/*import net.minecraft.client.gui.GuiGraphicsExtractor;*/
+//?} else {
 import net.minecraft.client.gui.GuiGraphics;
+//?}
 import pay.everyone.mod.compat.RenderHelper;
 
 import java.util.function.Consumer;
@@ -26,36 +30,68 @@ public class SliderWidget extends Widget {
         this.onChange = onChange;
     }
     
+    //? if >=26.1 {
+    /*@Override
+    public void render(GuiGraphicsExtractor graphics, int mouseX, int mouseY, float delta) {
+        if (!visible) return;
+        updateHovered(mouseX, mouseY);
+
+        var font = Minecraft.getInstance().font;
+        int textColor = enabled ? Theme.TEXT_PRIMARY : Theme.TEXT_DISABLED;
+
+        String displayValue = value + suffix;
+        String labelText = label + ": " + displayValue;
+        RenderHelper.drawString(graphics, font, labelText, x, y, textColor, false);
+
+        int sliderY = y + 12;
+        int sliderHeight = 8;
+        int trackY = sliderY + (sliderHeight - 4) / 2;
+
+        RenderHelper.fill(graphics, x, trackY, x + width, trackY + 4, Theme.BG_TERTIARY);
+        RenderHelper.fill(graphics, x, trackY, x + width, trackY + 1, Theme.BORDER);
+        RenderHelper.fill(graphics, x, trackY + 3, x + width, trackY + 4, Theme.BORDER);
+
+        float percent = (float)(value - minValue) / (float)(maxValue - minValue);
+        int fillWidth = (int)(width * percent);
+        RenderHelper.fill(graphics, x, trackY, x + fillWidth, trackY + 4, Theme.ACCENT);
+
+        int handleX = x + fillWidth - 3;
+        boolean handleHovered = hovered && mouseX >= handleX && mouseX < handleX + 6 && mouseY >= sliderY && mouseY < sliderY + sliderHeight;
+        int handleColor = (dragging || handleHovered) ? Theme.ACCENT_HOVER : Theme.ACCENT;
+        RenderHelper.fill(graphics, handleX, sliderY, handleX + 6, sliderY + sliderHeight, handleColor);
+    }
+    *///?} else {
     @Override
     public void render(GuiGraphics graphics, int mouseX, int mouseY, float delta) {
         if (!visible) return;
         updateHovered(mouseX, mouseY);
-        
+
         var font = Minecraft.getInstance().font;
         int textColor = enabled ? Theme.TEXT_PRIMARY : Theme.TEXT_DISABLED;
-        
+
         String displayValue = value + suffix;
         String labelText = label + ": " + displayValue;
         RenderHelper.drawString(graphics, font, labelText, x, y, textColor, false);
-        
+
         int sliderY = y + 12;
         int sliderHeight = 8;
         int trackY = sliderY + (sliderHeight - 4) / 2;
-        
+
         RenderHelper.fill(graphics, x, trackY, x + width, trackY + 4, Theme.BG_TERTIARY);
         RenderHelper.fill(graphics, x, trackY, x + width, trackY + 1, Theme.BORDER);
         RenderHelper.fill(graphics, x, trackY + 3, x + width, trackY + 4, Theme.BORDER);
-        
+
         float percent = (float)(value - minValue) / (float)(maxValue - minValue);
         int fillWidth = (int)(width * percent);
         RenderHelper.fill(graphics, x, trackY, x + fillWidth, trackY + 4, Theme.ACCENT);
-        
+
         // Only the handle shows hover effect
         int handleX = x + fillWidth - 3;
         boolean handleHovered = hovered && mouseX >= handleX && mouseX < handleX + 6 && mouseY >= sliderY && mouseY < sliderY + sliderHeight;
         int handleColor = (dragging || handleHovered) ? Theme.ACCENT_HOVER : Theme.ACCENT;
         RenderHelper.fill(graphics, handleX, sliderY, handleX + 6, sliderY + sliderHeight, handleColor);
     }
+    //?}
     
     @Override
     public boolean mouseClicked(double mouseX, double mouseY, int button) {

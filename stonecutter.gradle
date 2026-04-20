@@ -1,0 +1,20 @@
+plugins {
+    id 'dev.kikugie.stonecutter'
+}
+
+stonecutter.active '1.21.4' /* [SC] DO NOT EDIT */
+
+// Task to build all versions
+tasks.register('buildAll') {
+    group = 'build'
+    description = 'Builds all Minecraft versions'
+    dependsOn ':1.21.4:build', ':1.21.6:build', ':1.21.9:build', ':26.1:build'
+}
+
+// Task to remap all versions (produces final JARs)
+// Note: 26.1+ is unobfuscated, uses :jar instead of :remapJar
+tasks.register('remapAll') {
+    group = 'build'
+    description = 'Remaps JARs for all Minecraft versions'
+    dependsOn ':1.21.4:remapJar', ':1.21.6:remapJar', ':1.21.9:remapJar', ':26.1:jar'
+}

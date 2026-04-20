@@ -178,8 +178,13 @@ public class InputHandler {
                         pm.clearTabScanList();
                         pm.forceResetRunningState();
                         if (mc.player != null) {
+                            //? if >=26.1 {
+                            /*mc.player.sendSystemMessage(
+                                net.minecraft.network.chat.Component.literal("§e[Pay Everyone] Payment/Scan cancelled via keybind"));
+                            *///?} else {
                             mc.player.displayClientMessage(
                                 net.minecraft.network.chat.Component.literal("§e[Pay Everyone] Payment/Scan cancelled via keybind"), false);
+                            //?}
                         }
                         return true;
                     }

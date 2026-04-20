@@ -13,8 +13,11 @@ plugins {
 }
 
 stonecutter {
+    kotlinController = false
+    centralScript = "build.gradle"
+
     create(rootProject) {
-        versions("1.21.4", "1.21.6", "1.21.9")  // Legacy, Mid, Modern+ anchors
+        versions("1.21.4", "1.21.6", "1.21.9", "26.1")  // Legacy, Mid, Modern+, Unobfuscated anchors
         vcsVersion = "1.21.4"  // Reset to legacy before commits (INFRA-03)
     }
 }

@@ -15,8 +15,8 @@ A GUI that automatically opens with your inventory to pay all online players wit
 
 ## Requirements
 
-- **Minecraft** 1.21.1 – 1.21.11
-- **Fabric Loader** 0.15.0+
+- **Minecraft** 1.21.1 – 26.1.2
+- **Fabric Loader** 0.15.0+ (0.18.5+ for 26.1.x)
 - **Fabric API** (matching your Minecraft version)
 
 ### Installation
@@ -80,8 +80,8 @@ Change keybinds in **Options → Controls → Key Binds → Pay Everyone**.
 
 ### Prerequisites
 
-- **Java 21** or higher
-- **Gradle** (included via wrapper)
+- **Java 21** (legacy 1.21.x) or **Java 25** (26.1.x)
+- **Gradle** 9.4.0 (included via wrapper)
 
 ### Building the Minecraft Mod
 
@@ -100,4 +100,4 @@ Change keybinds in **Options → Controls → Key Binds → Pay Everyone**.
    ./gradlew build
    ```
 
-Output JARs are in `versions/1.21.4/build/libs/` (1.21.1 - 1.21.5), `versions/1.21.6/build/libs/` (1.21.6 - 1.21.8) and `versions/1.21.6/build/libs/` (1.21.9 - 1.21.11).
+Output JARs are in `versions/1.21.4/build/libs/` (1.21.1 - 1.21.5), `versions/1.21.6/build/libs/` (1.21.6 - 1.21.8), `versions/1.21.9/build/libs/` (1.21.9 - 1.21.11), and `versions/26.1/build/libs/` (26.1 - 26.1.2).

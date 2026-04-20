@@ -1,6 +1,10 @@
 package pay.everyone.mod.mixin.client;
 
+//? if >=26.1 {
+/*import net.minecraft.client.gui.GuiGraphicsExtractor;*/
+//?} else {
 import net.minecraft.client.gui.GuiGraphics;
+//?}
 //? if >=1.21.6 {
 import net.minecraft.client.gui.screens.inventory.AbstractContainerScreen;
 import net.minecraft.world.inventory.InventoryMenu;
@@ -20,21 +24,28 @@ import pay.everyone.mod.gui.PayEveryoneHud;
 public abstract class InventoryScreenMixin extends AbstractContainerScreen<InventoryMenu> {
     protected InventoryScreenMixin() { super(null, null, null); }
 //?} else {
-public abstract class InventoryScreenMixin extends Screen {
+/*public abstract class InventoryScreenMixin extends Screen {
     protected InventoryScreenMixin() { super(null); }
-//?}
-    
+*///?}
+
     @Inject(method = "init", at = @At("TAIL"))
     private void onInventoryInit(CallbackInfo ci) {
         PayEveryoneHud.getInstance().setInventoryMode(true);
         PayEveryoneHud.getInstance().positionForInventory(this.width, this.height);
     }
-    
+
+    //? if >=26.1 {
+    /*@Inject(method = "extractRenderState", at = @At("TAIL"), require = 0)
+    private void onExtractRender(GuiGraphicsExtractor graphics, int mouseX, int mouseY, float delta, CallbackInfo ci) {
+        PayEveryoneHud.getInstance().renderInScreen(graphics, mouseX, mouseY, delta);
+    }
+    *///?} else {
     @Inject(method = "render", at = @At("TAIL"))
     private void onRender(GuiGraphics graphics, int mouseX, int mouseY, float delta, CallbackInfo ci) {
         PayEveryoneHud.getInstance().renderInScreen(graphics, mouseX, mouseY, delta);
     }
-    
+    //?}
+
     @Override
     public void onClose() {
         if (PayManager.getInstance().isTabScanning()) {
@@ -43,7 +54,7 @@ public abstract class InventoryScreenMixin extends Screen {
         PayEveryoneHud.getInstance().setInventoryMode(false);
         super.onClose();
     }
-    
+
     @Override
     public void removed() {
         PayEveryoneHud.getInstance().setInventoryMode(false);

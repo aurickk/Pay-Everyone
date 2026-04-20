@@ -1,0 +1,149 @@
+buildscript {
+    repositories {
+        maven { url = "https://maven.fabricmc.net/" }
+        mavenCentral()
+        gradlePluginPortal()
+    }
+    dependencies {
+        classpath "net.fabricmc:fabric-loom:${property('loom_version')}"
+    }
+}
+
+def minecraft_version = property("minecraft_version") ?: stonecutter.current.version
+def minecraft_version_range = findProperty("minecraft_version_range") ?: ">=1.21.1"
+def version_suffix = findProperty("version_suffix") ?: minecraft_version
+def isUnobfuscated = (findProperty("minecraft_version")?.toString() ?: "").startsWith("26")
+
+// Apply the correct Loom plugin variant per version target:
+// - net.fabricmc.fabric-loom (non-remap) for unobfuscated MC 26.1+
+// - fabric-loom (legacy/remap) for obfuscated MC <=1.21.11
+if (isUnobfuscated) {
+    apply plugin: "net.fabricmc.fabric-loom"
+} else {
+    apply plugin: "fabric-loom"
+}
+apply plugin: "maven-publish"
+
+def modVersion = property("mod_version")
+group = property("maven_group")
+version = modVersion
+
+base {
+    archivesName = "${property('archives_base_name')}-${version_suffix}"
+}
+
+tasks.named("jar") {
+    archiveFileName = "${base.archivesName.get()}+v${project.version}.jar"
+}
+
+def remapJarTask = tasks.findByName("remapJar")
+if (remapJarTask != null) {
+    remapJarTask.archiveFileName = "${base.archivesName.get()}+v${project.version}.jar"
+}
+
+repositories {
+    maven { url = "https://jitpack.io" }
+}
+
+loom {
+    splitEnvironmentSourceSets()
+
+    mods {
+        create("pay-everyone") {
+            sourceSet(sourceSets.main)
+            sourceSet(sourceSets.client)
+        }
+    }
+
+    runs {
+        named("client") {
+            client()
+            configName = "Pay Everyone Client"
+            ideConfigGenerated(true)
+            runDir = "run"
+        }
+    }
+}
+
+// Source sets configuration
+// - Root project uses source files directly from src/
+// - Versioned projects use Stonecutter preprocessed files from build/generated/stonecutter/
+if (project == rootProject) {
+    sourceSets {
+        client {
+            java.srcDirs("src/client/java")
+            resources.srcDirs("src/client/resources")
+        }
+    }
+} else {
+    sourceSets {
+        client {
+            java {
+                setSrcDirs([layout.buildDirectory.dir("generated/stonecutter/client/java")])
+            }
+        }
+    }
+
+    tasks.configureEach { task ->
+        if (task.name == "compileClientJava" || task.name == "sourcesJar") {
+            task.dependsOn("stonecutterGenerateClient")
+        }
+    }
+}
+
+dependencies {
+    minecraft("com.mojang:minecraft:${minecraft_version}")
+    if (!isUnobfuscated) {
+        mappings(loom.officialMojangMappings())
+    }
+
+    def loaderCoord = "net.fabricmc:fabric-loader:${property('deps.fabric_loader')}"
+    def apiCoord = "net.fabricmc.fabric-api:fabric-api:${property('deps.fabric_api')}"
+
+    if (isUnobfuscated) {
+        implementation(loaderCoord)
+        implementation(apiCoord)
+    } else {
+        modImplementation(loaderCoord)
+        modImplementation(apiCoord)
+    }
+}
+
+tasks.processResources {
+    inputs.property("version", project.version)
+    inputs.property("minecraft_version_range", minecraft_version_range)
+
+    filesMatching("fabric.mod.json") {
+        expand(
+            "version": project.version,
+            "minecraft_version_range": minecraft_version_range
+        )
+    }
+}
+
+def javaVersion = isUnobfuscated ? 25 : 21
+
+tasks.withType(JavaCompile).configureEach {
+    options.release = javaVersion
+}
+
+java {
+    withSourcesJar()
+    sourceCompatibility = JavaVersion.toVersion(javaVersion)
+    targetCompatibility = JavaVersion.toVersion(javaVersion)
+}
+
+tasks.jar {
+    from(rootProject.file("LICENSE")) {
+        rename { "${it}_${base.archivesName.get()}" }
+    }
+}
+
+publishing {
+    publications {
+        mavenJava(MavenPublication) {
+            artifactId = "pay-everyone-${minecraft_version}"
+            from(components.java)
+        }
+    }
+}

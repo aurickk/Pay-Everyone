@@ -79,7 +79,11 @@ public class VersionCompat {
         return new KeyMapping(translationKey, keyCode, categoryKey);
         //? } else {
         if (cachedCategory == null) {
+            //? if >=26.1 {
+            /*cachedCategory = KeyMapping.Category.register(net.minecraft.resources.Identifier.parse("pay-everyone:main"));
+            *///?} else {
             cachedCategory = KeyMapping.Category.register(net.minecraft.resources.ResourceLocation.parse("pay-everyone:main"));
+            //?}
         }
         return new KeyMapping(translationKey, keyCode, cachedCategory);
         //? }
